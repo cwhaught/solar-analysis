@@ -1,5 +1,9 @@
 """
 Tests for SolarDataManager class
+
+Tests cover both mock client functionality (for testing/demo) and
+hybrid CSV+API data management capabilities. The SolarDataManager
+now automatically detects mock vs real clients for graceful operation.
 """
 
 import pytest
@@ -115,24 +119,38 @@ class TestSolarDataManager:
             invalid_manager.load_csv_data()
 
     def test_load_api_data_caching(self):
-        """Test API data caching"""
-        # Mock API response
-        mock_df = pd.DataFrame(
-            {
-                "production": [100, 200, 300],
-                "date": pd.date_range("2023-01-01", periods=3, freq="D"),
-            }
+        """Test API data caching with real (non-mock) client"""
+        # Create a real client (not detected as mock) for this test
+        class RealTestClient:
+            def __init__(self):
+                self.call_count = 0
+
+            def get_energy_lifetime(self, start_date=None, end_date=None):
+                self.call_count += 1
+                return pd.DataFrame(
+                    {
+                        "production": [100, 200, 300],
+                        "start_date": "2023-01-01",
+                    }
+                )
+
+        real_client = RealTestClient()
+
+        # Create data manager with real client
+        data_manager = SolarDataManager(
+            csv_path=self.csv_path,
+            enphase_client=real_client,
+            cache_dir=self.cache_dir,
         )
-        self.mock_client.get_energy_lifetime.return_value = mock_df
 
         # First load
-        df1 = self.data_manager.load_api_data()
+        df1 = data_manager.load_api_data()
 
         # Second load (should use cache)
-        df2 = self.data_manager.load_api_data()
+        df2 = data_manager.load_api_data()
 
-        # API should only be called once
-        assert self.mock_client.get_energy_lifetime.call_count == 1
+        # API should only be called once due to caching
+        assert real_client.call_count == 1
         assert df1 is df2
 
     def test_get_daily_production_csv_only(self):
@@ -175,3 +193,76 @@ class TestSolarDataManager:
             "Import (kWh)",
         ]
         assert list(df.columns) == expected_cols
+
+    def test_mock_client_detection(self):
+        """Test that SolarDataManager correctly detects mock clients"""
+        # Test with standard Mock (should be detected as mock)
+        mock_client = Mock()
+        mock_client.__class__.__name__ = "Mock"
+
+        data_manager = SolarDataManager(
+            csv_path=self.csv_path,
+            enphase_client=mock_client,
+            cache_dir=self.cache_dir,
+        )
+
+        assert data_manager._is_mock_client is True
+
+        # Test with MockEnphaseClient (should be detected as mock)
+        class MockEnphaseClient:
+            def get_energy_lifetime(self, start_date=None, end_date=None):
+                return pd.DataFrame()
+
+        mock_enphase = MockEnphaseClient()
+
+        data_manager_2 = SolarDataManager(
+            csv_path=self.csv_path,
+            enphase_client=mock_enphase,
+            cache_dir=self.cache_dir,
+        )
+
+        assert data_manager_2._is_mock_client is True
+
+        # Test with real client class (should not be detected as mock)
+        class RealEnphaseClient:
+            def get_energy_lifetime(self, start_date=None, end_date=None):
+                return pd.DataFrame()
+
+        real_client = RealEnphaseClient()
+
+        data_manager_3 = SolarDataManager(
+            csv_path=self.csv_path,
+            enphase_client=real_client,
+            cache_dir=self.cache_dir,
+        )
+
+        assert data_manager_3._is_mock_client is False
+
+    def test_load_api_data_with_mock_client(self):
+        """Test that load_api_data correctly handles mock clients"""
+        # Create data manager with mock client
+        mock_client = Mock()
+        mock_client.__class__.__name__ = "MockEnphaseClient"
+
+        data_manager = SolarDataManager(
+            csv_path=self.csv_path,
+            enphase_client=mock_client,
+            cache_dir=self.cache_dir,
+        )
+
+        # Should return empty DataFrame and not call the client
+        result = data_manager.load_api_data()
+
+        assert isinstance(result, pd.DataFrame)
+        assert result.empty
+        # Mock client's get_energy_lifetime should not have been called
+        mock_client.get_energy_lifetime.assert_not_called()
+
+    def test_get_data_summary_includes_mock_status(self):
+        """Test that get_data_summary includes mock client status"""
+        summary = self.data_manager.get_data_summary()
+
+        # Should include is_mock field in API section
+        assert 'api' in summary
+        assert 'is_mock' in summary['api']
+        assert summary['api']['is_mock'] is True  # Using Mock client in setup

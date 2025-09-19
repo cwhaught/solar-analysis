@@ -51,6 +51,9 @@ class SolarDataManager:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
+        # Detect if using mock client
+        self._is_mock_client = hasattr(enphase_client, '__class__') and 'Mock' in enphase_client.__class__.__name__
+
     def load_csv_data(self, force_reload: bool = False) -> pd.DataFrame:
         """
         Load and process historical CSV data
@@ -109,6 +112,11 @@ class SolarDataManager:
             DataFrame with API data
         """
         if self._api_data is not None and not force_reload:
+            return self._api_data
+
+        if self._is_mock_client:
+            self.logger.info("Using mock client - skipping API data retrieval")
+            self._api_data = pd.DataFrame()
             return self._api_data
 
         self.logger.info(f"Loading API data for last {days_back} days")
@@ -355,6 +363,7 @@ class SolarDataManager:
             },
             "api": {
                 "available": not api_data.empty,
+                "is_mock": self._is_mock_client,
                 "records": len(api_data) if not api_data.empty else 0,
                 "date_range": (
                     (
