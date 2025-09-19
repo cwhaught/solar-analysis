@@ -21,16 +21,18 @@ class EnphaseAPI:
             api_key: Enphase API key
             user_id: Enphase user ID
         """
-        self.api_key = api_key or os.getenv('ENPHASE_API_KEY')
-        self.user_id = user_id or os.getenv('ENPHASE_USER_ID')
+        self.api_key = api_key or os.getenv("ENPHASE_API_KEY")
+        self.user_id = user_id or os.getenv("ENPHASE_USER_ID")
         self.base_url = "https://api.enphaseenergy.com/api/v2"
         self.session = requests.Session()
 
         if self.api_key:
-            self.session.headers.update({
-                'Authorization': f'Bearer {self.api_key}',
-                'Content-Type': 'application/json'
-            })
+            self.session.headers.update(
+                {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                }
+            )
 
     def get_systems(self) -> Optional[Dict]:
         """Get list of systems for the user"""
@@ -48,8 +50,9 @@ class EnphaseAPI:
             print(response.text)
             return None
 
-    def get_production_data(self, system_id: str, start_date: str, end_date: str,
-                            granularity: str = 'day') -> Optional[pd.DataFrame]:
+    def get_production_data(
+        self, system_id: str, start_date: str, end_date: str, granularity: str = "day"
+    ) -> Optional[pd.DataFrame]:
         """
         Get production data for a system
 
@@ -67,15 +70,11 @@ class EnphaseAPI:
             return None
 
         # Convert dates to timestamps
-        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
-        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp())
+        start_ts = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
+        end_ts = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp())
 
         url = f"{self.base_url}/systems/{system_id}/stats"
-        params = {
-            'start_at': start_ts,
-            'end_at': end_ts,
-            'granularity': granularity
-        }
+        params = {"start_at": start_ts, "end_at": end_ts, "granularity": granularity}
 
         response = self.session.get(url, params=params)
 
@@ -87,20 +86,19 @@ class EnphaseAPI:
             print(response.text)
             return None
 
-    def get_consumption_data(self, system_id: str, start_date: str, end_date: str) -> Optional[pd.DataFrame]:
+    def get_consumption_data(
+        self, system_id: str, start_date: str, end_date: str
+    ) -> Optional[pd.DataFrame]:
         """Get consumption data if available"""
         if not self.api_key:
             print("API key required for this method")
             return None
 
-        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
-        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp())
+        start_ts = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
+        end_ts = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp())
 
         url = f"{self.base_url}/systems/{system_id}/consumption_stats"
-        params = {
-            'start_at': start_ts,
-            'end_at': end_ts
-        }
+        params = {"start_at": start_ts, "end_at": end_ts}
 
         response = self.session.get(url, params=params)
 
@@ -113,39 +111,39 @@ class EnphaseAPI:
 
     def _parse_production_data(self, data: Dict, granularity: str) -> pd.DataFrame:
         """Parse production data from API response"""
-        intervals = data.get('intervals', [])
+        intervals = data.get("intervals", [])
 
         records = []
         for interval in intervals:
             record = {
-                'datetime': pd.to_datetime(interval['end_at'], unit='s'),
-                'production_wh': interval.get('powr', 0),
-                'devices_reporting': interval.get('devices_reporting', 0)
+                "datetime": pd.to_datetime(interval["end_at"], unit="s"),
+                "production_wh": interval.get("powr", 0),
+                "devices_reporting": interval.get("devices_reporting", 0),
             }
             records.append(record)
 
         df = pd.DataFrame(records)
         if not df.empty:
-            df.set_index('datetime', inplace=True)
+            df.set_index("datetime", inplace=True)
             df.sort_index(inplace=True)
 
         return df
 
     def _parse_consumption_data(self, data: Dict) -> pd.DataFrame:
         """Parse consumption data from API response"""
-        intervals = data.get('intervals', [])
+        intervals = data.get("intervals", [])
 
         records = []
         for interval in intervals:
             record = {
-                'datetime': pd.to_datetime(interval['end_at'], unit='s'),
-                'consumption_wh': interval.get('enwh', 0)
+                "datetime": pd.to_datetime(interval["end_at"], unit="s"),
+                "consumption_wh": interval.get("enwh", 0),
             }
             records.append(record)
 
         df = pd.DataFrame(records)
         if not df.empty:
-            df.set_index('datetime', inplace=True)
+            df.set_index("datetime", inplace=True)
             df.sort_index(inplace=True)
 
         return df
@@ -250,7 +248,7 @@ def get_live_data(method: str = "auto") -> Optional[pd.DataFrame]:
         local_api = EnphaseLocalAPI()
         if local_api.test_connection():
             method = "local"
-        elif os.getenv('ENPHASE_API_KEY'):
+        elif os.getenv("ENPHASE_API_KEY"):
             method = "api"
         else:
             print("No Enphase connection available")
@@ -262,22 +260,27 @@ def get_live_data(method: str = "auto") -> Optional[pd.DataFrame]:
         if data:
             # Convert to DataFrame format compatible with your existing code
             current_time = datetime.now()
-            df = pd.DataFrame([{
-                'datetime': current_time,
-                'production_w': data.get('wattsNow', 0),
-                'total_production_mwh': data.get('wattHoursLifetime', 0) / 1000000
-            }])
-            df.set_index('datetime', inplace=True)
+            df = pd.DataFrame(
+                [
+                    {
+                        "datetime": current_time,
+                        "production_w": data.get("wattsNow", 0),
+                        "total_production_mwh": data.get("wattHoursLifetime", 0)
+                        / 1000000,
+                    }
+                ]
+            )
+            df.set_index("datetime", inplace=True)
             return df
 
     elif method == "api":
         api = EnphaseAPI()
         systems = api.get_systems()
-        if systems and len(systems.get('systems', [])) > 0:
-            system_id = systems['systems'][0]['system_id']
-            today = datetime.now().strftime('%Y-%m-%d')
-            yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        if systems and len(systems.get("systems", [])) > 0:
+            system_id = systems["systems"][0]["system_id"]
+            today = datetime.now().strftime("%Y-%m-%d")
+            yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-            return api.get_production_data(system_id, yesterday, today, '15mins')
+            return api.get_production_data(system_id, yesterday, today, "15mins")
 
     return None

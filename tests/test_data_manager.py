@@ -25,11 +25,15 @@ class TestSolarDataManager:
 
         # Create sample CSV data
         sample_data = {
-            'Date/Time': ['2023-01-01 00:00:00', '2023-01-01 00:15:00', '2023-01-01 00:30:00'],
-            'Production (Wh)': [1000, 1500, 2000],
-            'Consumption (Wh)': [800, 1200, 1600],
-            'Export (Wh)': [200, 300, 400],
-            'Import (Wh)': [0, 0, 0]
+            "Date/Time": [
+                "2023-01-01 00:00:00",
+                "2023-01-01 00:15:00",
+                "2023-01-01 00:30:00",
+            ],
+            "Production (Wh)": [1000, 1500, 2000],
+            "Consumption (Wh)": [800, 1200, 1600],
+            "Export (Wh)": [200, 300, 400],
+            "Import (Wh)": [0, 0, 0],
         }
         df = pd.DataFrame(sample_data)
         df.to_csv(self.csv_path, index=False)
@@ -41,12 +45,13 @@ class TestSolarDataManager:
         self.data_manager = SolarDataManager(
             csv_path=self.csv_path,
             enphase_client=self.mock_client,
-            cache_dir=self.cache_dir
+            cache_dir=self.cache_dir,
         )
 
     def teardown_method(self):
         """Clean up test fixtures"""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_init(self):
@@ -62,13 +67,18 @@ class TestSolarDataManager:
 
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 3
-        assert list(df.columns) == ['Production (kWh)', 'Consumption (kWh)', 'Export (kWh)', 'Import (kWh)']
-        assert df.index.name == 'Date/Time'
-        assert df.attrs['source'] == 'csv'
-        assert df.attrs['granularity'] == '15min'
+        assert list(df.columns) == [
+            "Production (kWh)",
+            "Consumption (kWh)",
+            "Export (kWh)",
+            "Import (kWh)",
+        ]
+        assert df.index.name == "Date/Time"
+        assert df.attrs["source"] == "csv"
+        assert df.attrs["granularity"] == "15min"
 
         # Check data conversion from Wh to kWh
-        assert df.iloc[0]['Production (kWh)'] == 1.0  # 1000 Wh -> 1.0 kWh
+        assert df.iloc[0]["Production (kWh)"] == 1.0  # 1000 Wh -> 1.0 kWh
 
     def test_load_csv_data_caching(self):
         """Test CSV data caching behavior"""
@@ -98,7 +108,7 @@ class TestSolarDataManager:
         invalid_manager = SolarDataManager(
             csv_path="/nonexistent/file.csv",
             enphase_client=self.mock_client,
-            cache_dir=self.cache_dir
+            cache_dir=self.cache_dir,
         )
 
         with pytest.raises(FileNotFoundError):
@@ -107,10 +117,12 @@ class TestSolarDataManager:
     def test_load_api_data_caching(self):
         """Test API data caching"""
         # Mock API response
-        mock_df = pd.DataFrame({
-            'production': [100, 200, 300],
-            'date': pd.date_range('2023-01-01', periods=3, freq='D')
-        })
+        mock_df = pd.DataFrame(
+            {
+                "production": [100, 200, 300],
+                "date": pd.date_range("2023-01-01", periods=3, freq="D"),
+            }
+        )
         self.mock_client.get_energy_lifetime.return_value = mock_df
 
         # First load
@@ -134,7 +146,7 @@ class TestSolarDataManager:
         assert len(daily_df) == 1  # Should aggregate to 1 day
         assert daily_df.index[0].date() == datetime(2023, 1, 1).date()
 
-    @patch('src.core.data_manager.datetime')
+    @patch("src.core.data_manager.datetime")
     def test_cache_file_paths(self, mock_datetime):
         """Test cache file path generation"""
         mock_datetime.now.return_value = datetime(2023, 6, 15)
@@ -156,5 +168,10 @@ class TestSolarDataManager:
         assert pd.api.types.is_datetime64_any_dtype(df.index)
 
         # Check column names are standardized
-        expected_cols = ['Production (kWh)', 'Consumption (kWh)', 'Export (kWh)', 'Import (kWh)']
+        expected_cols = [
+            "Production (kWh)",
+            "Consumption (kWh)",
+            "Export (kWh)",
+            "Import (kWh)",
+        ]
         assert list(df.columns) == expected_cols

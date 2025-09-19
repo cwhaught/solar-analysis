@@ -23,6 +23,7 @@ class TestEnphaseOAuthSetup:
     def teardown_method(self):
         """Clean up test fixtures"""
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_init(self):
@@ -35,9 +36,9 @@ class TestEnphaseOAuthSetup:
     def test_save_credentials(self):
         """Test credential saving"""
         credentials = {
-            'ENPHASE_CLIENT_ID': 'test_client_id',
-            'ENPHASE_CLIENT_SECRET': 'test_client_secret',
-            'ENPHASE_API_KEY': 'test_api_key'
+            "ENPHASE_CLIENT_ID": "test_client_id",
+            "ENPHASE_CLIENT_SECRET": "test_client_secret",
+            "ENPHASE_API_KEY": "test_api_key",
         }
 
         result = self.oauth_setup.save_credentials(credentials)
@@ -46,19 +47,23 @@ class TestEnphaseOAuthSetup:
         assert Path(self.env_file).exists()
 
         # Check file content
-        with open(self.env_file, 'r') as f:
+        with open(self.env_file, "r") as f:
             content = f.read()
-            assert 'ENPHASE_CLIENT_ID=test_client_id' in content
-            assert 'ENPHASE_CLIENT_SECRET=test_client_secret' in content
-            assert 'ENPHASE_API_KEY=test_api_key' in content
+            assert "ENPHASE_CLIENT_ID=test_client_id" in content
+            assert "ENPHASE_CLIENT_SECRET=test_client_secret" in content
+            assert "ENPHASE_API_KEY=test_api_key" in content
 
     def test_load_credentials_empty_file(self):
         """Test loading credentials when no file exists"""
         credentials = self.oauth_setup.load_credentials()
 
         expected_keys = [
-            'ENPHASE_CLIENT_ID', 'ENPHASE_CLIENT_SECRET', 'ENPHASE_API_KEY',
-            'ENPHASE_ACCESS_TOKEN', 'ENPHASE_REFRESH_TOKEN', 'ENPHASE_SYSTEM_ID'
+            "ENPHASE_CLIENT_ID",
+            "ENPHASE_CLIENT_SECRET",
+            "ENPHASE_API_KEY",
+            "ENPHASE_ACCESS_TOKEN",
+            "ENPHASE_REFRESH_TOKEN",
+            "ENPHASE_SYSTEM_ID",
         ]
 
         for key in expected_keys:
@@ -73,15 +78,15 @@ ENPHASE_CLIENT_ID=test_client_123
 ENPHASE_API_KEY=test_api_456
 ENPHASE_SYSTEM_ID=789
 """
-        with open(self.env_file, 'w') as f:
+        with open(self.env_file, "w") as f:
             f.write(env_content)
 
         credentials = self.oauth_setup.load_credentials()
 
-        assert credentials['ENPHASE_CLIENT_ID'] == 'test_client_123'
-        assert credentials['ENPHASE_API_KEY'] == 'test_api_456'
-        assert credentials['ENPHASE_SYSTEM_ID'] == '789'
-        assert credentials['ENPHASE_CLIENT_SECRET'] is None  # Not in file
+        assert credentials["ENPHASE_CLIENT_ID"] == "test_client_123"
+        assert credentials["ENPHASE_API_KEY"] == "test_api_456"
+        assert credentials["ENPHASE_SYSTEM_ID"] == "789"
+        assert credentials["ENPHASE_CLIENT_SECRET"] is None  # Not in file
 
     def test_get_authorization_url(self):
         """Test authorization URL generation"""
@@ -94,7 +99,7 @@ ENPHASE_SYSTEM_ID=789
         assert "redirect_uri=" in url
         assert "scope=read" in url
 
-    @patch('src.core.oauth_setup.requests.post')
+    @patch("src.core.oauth_setup.requests.post")
     def test_exchange_code_for_tokens_success(self, mock_post):
         """Test successful token exchange"""
         mock_response = Mock()
@@ -103,7 +108,7 @@ ENPHASE_SYSTEM_ID=789
             "access_token": "test_access_token",
             "refresh_token": "test_refresh_token",
             "expires_in": 3600,
-            "token_type": "Bearer"
+            "token_type": "Bearer",
         }
         mock_post.return_value = mock_response
 
@@ -115,7 +120,7 @@ ENPHASE_SYSTEM_ID=789
         assert result["access_token"] == "test_access_token"
         assert result["refresh_token"] == "test_refresh_token"
 
-    @patch('src.core.oauth_setup.requests.post')
+    @patch("src.core.oauth_setup.requests.post")
     def test_exchange_code_for_tokens_failure(self, mock_post):
         """Test failed token exchange"""
         mock_response = Mock()
@@ -133,42 +138,42 @@ ENPHASE_SYSTEM_ID=789
         """Test security check with no files"""
         checks = self.oauth_setup.check_security_setup()
 
-        assert checks['env_exists'] is False
-        assert checks['gitignore_exists'] is False
-        assert checks['env_in_gitignore'] is False
-        assert checks['secure_permissions'] is False
+        assert checks["env_exists"] is False
+        assert checks["gitignore_exists"] is False
+        assert checks["env_in_gitignore"] is False
+        assert checks["secure_permissions"] is False
 
     def test_check_security_setup_with_files(self):
         """Test security check with proper setup"""
         # Create .env file
-        with open(self.env_file, 'w') as f:
+        with open(self.env_file, "w") as f:
             f.write("ENPHASE_CLIENT_ID=test")
 
         # Create .gitignore file
         gitignore_path = os.path.join(self.temp_dir, ".gitignore")
-        with open(gitignore_path, 'w') as f:
+        with open(gitignore_path, "w") as f:
             f.write(".env\n*.log\n")
 
         checks = self.oauth_setup.check_security_setup()
 
-        assert checks['env_exists'] is True
-        assert checks['gitignore_exists'] is True
-        assert checks['env_in_gitignore'] is True
+        assert checks["env_exists"] is True
+        assert checks["gitignore_exists"] is True
+        assert checks["env_in_gitignore"] is True
 
     def test_save_credentials_handles_empty_values(self):
         """Test that empty values are not saved"""
         credentials = {
-            'ENPHASE_CLIENT_ID': 'test_client_id',
-            'ENPHASE_CLIENT_SECRET': '',  # Empty value
-            'ENPHASE_API_KEY': None  # None value
+            "ENPHASE_CLIENT_ID": "test_client_id",
+            "ENPHASE_CLIENT_SECRET": "",  # Empty value
+            "ENPHASE_API_KEY": None,  # None value
         }
 
         result = self.oauth_setup.save_credentials(credentials)
 
         assert result is True
 
-        with open(self.env_file, 'r') as f:
+        with open(self.env_file, "r") as f:
             content = f.read()
-            assert 'ENPHASE_CLIENT_ID=test_client_id' in content
-            assert 'ENPHASE_CLIENT_SECRET=' not in content
-            assert 'ENPHASE_API_KEY=' not in content
+            assert "ENPHASE_CLIENT_ID=test_client_id" in content
+            assert "ENPHASE_CLIENT_SECRET=" not in content
+            assert "ENPHASE_API_KEY=" not in content

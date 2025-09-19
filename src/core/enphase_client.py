@@ -41,10 +41,7 @@ class EnphaseClient:
         self.api_key = api_key
         self.system_id = system_id
         self.base_url = "https://api.enphaseenergy.com/api/v4"
-        self.headers = {
-            'Authorization': f'Bearer {access_token}',
-            'key': api_key
-        }
+        self.headers = {"Authorization": f"Bearer {access_token}", "key": api_key}
         self.rate_limit_delay = 2  # seconds between requests
 
     def get_current_status(self) -> Optional[Dict]:
@@ -67,9 +64,12 @@ class EnphaseClient:
             print(f"Error getting system status: {response.status_code}")
             return None
 
-    def get_energy_lifetime(self, start_date: Optional[Union[str, datetime]] = None,
-                          end_date: Optional[Union[str, datetime]] = None,
-                          production: str = 'default') -> pd.DataFrame:
+    def get_energy_lifetime(
+        self,
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+        production: str = "default",
+    ) -> pd.DataFrame:
         """
         Get daily energy production time series over system lifetime
 
@@ -89,16 +89,16 @@ class EnphaseClient:
 
         if start_date:
             if isinstance(start_date, str):
-                start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            params['start_date'] = start_date.strftime('%Y-%m-%d')
+                start_date = datetime.strptime(start_date, "%Y-%m-%d")
+            params["start_date"] = start_date.strftime("%Y-%m-%d")
 
         if end_date:
             if isinstance(end_date, str):
-                end_date = datetime.strptime(end_date, '%Y-%m-%d')
-            params['end_date'] = end_date.strftime('%Y-%m-%d')
+                end_date = datetime.strptime(end_date, "%Y-%m-%d")
+            params["end_date"] = end_date.strftime("%Y-%m-%d")
 
-        if production != 'default':
-            params['production'] = production
+        if production != "default":
+            params["production"] = production
 
         response = requests.get(url, headers=self.headers, params=params)
 
@@ -112,44 +112,43 @@ class EnphaseClient:
         else:
             print(f"Error getting lifetime energy: {response.status_code}")
             if response.status_code == 422:
-                error_detail = response.json().get('details', 'Unknown error')
+                error_detail = response.json().get("details", "Unknown error")
                 print(f"Details: {error_detail}")
             return pd.DataFrame()
 
     def _parse_energy_lifetime(self, data: Dict) -> pd.DataFrame:
         """Parse energy_lifetime API response into DataFrame"""
         # The API returns 'production' not 'energy_lifetime'
-        if 'production' not in data:
+        if "production" not in data:
             return pd.DataFrame()
 
-        energy_data = data['production']
-        start_date_str = data.get('start_date')
+        energy_data = data["production"]
+        start_date_str = data.get("start_date")
 
         if not start_date_str or not energy_data:
             return pd.DataFrame()
 
         # Create date range
-        dates = pd.date_range(
-            start=start_date_str,
-            periods=len(energy_data),
-            freq='D'
-        )
+        dates = pd.date_range(start=start_date_str, periods=len(energy_data), freq="D")
 
-        df = pd.DataFrame({
-            'date': dates,
-            'daily_energy_wh': energy_data,
-            'daily_energy_kwh': [wh/1000 if wh > 0 else 0 for wh in energy_data]
-        })
-        df.set_index('date', inplace=True)
+        df = pd.DataFrame(
+            {
+                "date": dates,
+                "daily_energy_wh": energy_data,
+                "daily_energy_kwh": [wh / 1000 if wh > 0 else 0 for wh in energy_data],
+            }
+        )
+        df.set_index("date", inplace=True)
 
         # Add metadata
-        if 'meter_start_date' in data:
-            df.attrs['meter_start_date'] = data['meter_start_date']
+        if "meter_start_date" in data:
+            df.attrs["meter_start_date"] = data["meter_start_date"]
 
         return df
 
-    def get_rgm_stats(self, start_date: Union[str, datetime],
-                     end_date: Union[str, datetime]) -> pd.DataFrame:
+    def get_rgm_stats(
+        self, start_date: Union[str, datetime], end_date: Union[str, datetime]
+    ) -> pd.DataFrame:
         """
         Get revenue-grade meter statistics with 15-minute intervals
 
@@ -164,9 +163,9 @@ class EnphaseClient:
             DataFrame with 15-minute revenue-grade meter data
         """
         if isinstance(start_date, str):
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            start_date = datetime.strptime(start_date, "%Y-%m-%d")
         if isinstance(end_date, str):
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
         # Check 7-day limit
         if (end_date - start_date).days > 7:
@@ -177,10 +176,7 @@ class EnphaseClient:
         end_ts = int(end_date.timestamp())
 
         url = f"{self.base_url}/systems/{self.system_id}/rgm_stats"
-        params = {
-            'start_at': start_ts,
-            'end_at': end_ts
-        }
+        params = {"start_at": start_ts, "end_at": end_ts}
 
         response = requests.get(url, headers=self.headers, params=params)
 
@@ -189,7 +185,7 @@ class EnphaseClient:
             return self._parse_rgm_stats(data)
 
         elif response.status_code == 422:
-            error_detail = response.json().get('details', 'Unknown error')
+            error_detail = response.json().get("details", "Unknown error")
             print(f"API Error 422: {error_detail}")
             return pd.DataFrame()
         elif response.status_code == 429:
@@ -201,10 +197,10 @@ class EnphaseClient:
 
     def _parse_rgm_stats(self, data: Dict) -> pd.DataFrame:
         """Parse rgm_stats API response into DataFrame"""
-        if 'meter_intervals' not in data:
+        if "meter_intervals" not in data:
             return pd.DataFrame()
 
-        meter_intervals = data['meter_intervals']
+        meter_intervals = data["meter_intervals"]
 
         if not meter_intervals:
             return pd.DataFrame()
@@ -213,32 +209,32 @@ class EnphaseClient:
 
         # Process each meter
         for meter_data in meter_intervals:
-            meter_serial = meter_data.get('meter_serial_number', 'unknown')
-            envoy_serial = meter_data.get('envoy_serial_number', 'unknown')
-            intervals = meter_data.get('intervals', [])
+            meter_serial = meter_data.get("meter_serial_number", "unknown")
+            envoy_serial = meter_data.get("envoy_serial_number", "unknown")
+            intervals = meter_data.get("intervals", [])
 
             for interval in intervals:
-                dt = pd.to_datetime(interval['end_at'], unit='s')
+                dt = pd.to_datetime(interval["end_at"], unit="s")
 
                 # Safely handle None values
-                wh_del = interval.get('wh_del', 0) or 0
-                curr_w = interval.get('curr_w', 0) or 0
+                wh_del = interval.get("wh_del", 0) or 0
+                curr_w = interval.get("curr_w", 0) or 0
 
                 record = {
-                    'datetime': dt,
-                    'channel': interval.get('channel', 1),
-                    'energy_delivered_wh': wh_del,
-                    'energy_delivered_kwh': wh_del / 1000,
-                    'current_power_w': curr_w,
-                    'current_power_kw': curr_w / 1000,
-                    'meter_serial': meter_serial,
-                    'envoy_serial': envoy_serial
+                    "datetime": dt,
+                    "channel": interval.get("channel", 1),
+                    "energy_delivered_wh": wh_del,
+                    "energy_delivered_kwh": wh_del / 1000,
+                    "current_power_w": curr_w,
+                    "current_power_kw": curr_w / 1000,
+                    "meter_serial": meter_serial,
+                    "envoy_serial": envoy_serial,
                 }
                 all_records.append(record)
 
         if all_records:
             df = pd.DataFrame(all_records)
-            df.set_index('datetime', inplace=True)
+            df.set_index("datetime", inplace=True)
             df.sort_index(inplace=True)
             return df
 
@@ -266,8 +262,9 @@ class EnphaseClient:
 
         return self.get_rgm_stats(start_date, end_date)
 
-    def get_daily_production(self, start_date: Union[str, datetime],
-                           end_date: Union[str, datetime]) -> pd.DataFrame:
+    def get_daily_production(
+        self, start_date: Union[str, datetime], end_date: Union[str, datetime]
+    ) -> pd.DataFrame:
         """
         Get daily production totals by aggregating 15-minute intervals
 
@@ -282,19 +279,23 @@ class EnphaseClient:
             DataFrame with daily production totals
         """
         if isinstance(start_date, str):
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            start_date = datetime.strptime(start_date, "%Y-%m-%d")
         if isinstance(end_date, str):
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
         # Check 7-day limit
         if (end_date - start_date).days > 7:
-            print("Warning: Daily production endpoint limited to 7 days. Use get_energy_lifetime() for longer ranges.")
+            print(
+                "Warning: Daily production endpoint limited to 7 days. Use get_energy_lifetime() for longer ranges."
+            )
             return pd.DataFrame()
 
         # Check 2-year limit
         two_years_ago = datetime.now() - timedelta(days=730)
         if start_date < two_years_ago:
-            print(f"Warning: Start date {start_date.strftime('%Y-%m-%d')} is beyond 2-year API limit")
+            print(
+                f"Warning: Start date {start_date.strftime('%Y-%m-%d')} is beyond 2-year API limit"
+            )
             start_date = two_years_ago
 
         start_ts = int(start_date.timestamp())
@@ -302,16 +303,16 @@ class EnphaseClient:
 
         url = f"{self.base_url}/systems/{self.system_id}/telemetry/production_meter"
         params = {
-            'start_at': start_ts,
-            'end_at': end_ts,
-            'granularity': 'day'  # Returns 15-min intervals
+            "start_at": start_ts,
+            "end_at": end_ts,
+            "granularity": "day",  # Returns 15-min intervals
         }
 
         response = requests.get(url, headers=self.headers, params=params)
 
         if response.status_code == 200:
             data = response.json()
-            intervals = data.get('intervals', [])
+            intervals = data.get("intervals", [])
 
             if not intervals:
                 return pd.DataFrame()
@@ -319,31 +320,33 @@ class EnphaseClient:
             # Convert intervals to DataFrame and aggregate to daily
             records = []
             for interval in intervals:
-                dt = pd.to_datetime(interval['end_at'], unit='s')
+                dt = pd.to_datetime(interval["end_at"], unit="s")
                 record = {
-                    'datetime': dt,
-                    'production_wh': interval.get('wh_del', 0),
-                    'devices_reporting': interval.get('devices_reporting', 0)
+                    "datetime": dt,
+                    "production_wh": interval.get("wh_del", 0),
+                    "devices_reporting": interval.get("devices_reporting", 0),
                 }
                 records.append(record)
 
             df = pd.DataFrame(records)
-            df.set_index('datetime', inplace=True)
-            df['production_kwh'] = df['production_wh'] / 1000
+            df.set_index("datetime", inplace=True)
+            df["production_kwh"] = df["production_wh"] / 1000
 
             # Aggregate to daily totals
-            daily_df = df.groupby(df.index.date).agg({
-                'production_wh': 'sum',
-                'production_kwh': 'sum',
-                'devices_reporting': 'mean'
-            })
+            daily_df = df.groupby(df.index.date).agg(
+                {
+                    "production_wh": "sum",
+                    "production_kwh": "sum",
+                    "devices_reporting": "mean",
+                }
+            )
             daily_df.index = pd.to_datetime(daily_df.index)
-            daily_df.index.name = 'date'
+            daily_df.index.name = "date"
 
             return daily_df
 
         elif response.status_code == 422:
-            error_detail = response.json().get('details', 'Unknown error')
+            error_detail = response.json().get("details", "Unknown error")
             print(f"API Error 422: {error_detail}")
             return pd.DataFrame()
         elif response.status_code == 429:
@@ -353,7 +356,9 @@ class EnphaseClient:
             print(f"Error {response.status_code}: {response.text}")
             return pd.DataFrame()
 
-    def get_fifteen_minute_intervals(self, target_date: Union[str, datetime]) -> pd.DataFrame:
+    def get_fifteen_minute_intervals(
+        self, target_date: Union[str, datetime]
+    ) -> pd.DataFrame:
         """
         Get 15-minute intervals for a specific day
 
@@ -364,7 +369,7 @@ class EnphaseClient:
             DataFrame with 15-minute production intervals
         """
         if isinstance(target_date, str):
-            target_date = datetime.strptime(target_date, '%Y-%m-%d')
+            target_date = datetime.strptime(target_date, "%Y-%m-%d")
 
         # Set to start and end of day
         start_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -375,33 +380,33 @@ class EnphaseClient:
 
         url = f"{self.base_url}/systems/{self.system_id}/telemetry/production_meter"
         params = {
-            'start_at': start_ts,
-            'end_at': end_ts,
-            'granularity': 'day'  # Returns 15-min intervals for the day
+            "start_at": start_ts,
+            "end_at": end_ts,
+            "granularity": "day",  # Returns 15-min intervals for the day
         }
 
         response = requests.get(url, headers=self.headers, params=params)
 
         if response.status_code == 200:
             data = response.json()
-            intervals = data.get('intervals', [])
+            intervals = data.get("intervals", [])
 
             if not intervals:
                 return pd.DataFrame()
 
             records = []
             for interval in intervals:
-                dt = pd.to_datetime(interval['end_at'], unit='s')
+                dt = pd.to_datetime(interval["end_at"], unit="s")
                 record = {
-                    'datetime': dt,
-                    'production_wh': interval.get('wh_del', 0),
-                    'production_kwh': interval.get('wh_del', 0) / 1000,
-                    'devices_reporting': interval.get('devices_reporting', 0)
+                    "datetime": dt,
+                    "production_wh": interval.get("wh_del", 0),
+                    "production_kwh": interval.get("wh_del", 0) / 1000,
+                    "devices_reporting": interval.get("devices_reporting", 0),
                 }
                 records.append(record)
 
             df = pd.DataFrame(records)
-            df.set_index('datetime', inplace=True)
+            df.set_index("datetime", inplace=True)
             df.sort_index(inplace=True)
 
             return df
@@ -426,7 +431,7 @@ class EnphaseClient:
         daily_data = []
 
         for i in range(days_back):
-            date = datetime.now() - timedelta(days=i+1)  # Skip today (incomplete)
+            date = datetime.now() - timedelta(days=i + 1)  # Skip today (incomplete)
 
             # Add delay to respect rate limits
             if i > 0:
@@ -437,23 +442,27 @@ class EnphaseClient:
                 day_data = self.get_energy_lifetime(date, date)
 
                 if not day_data.empty:
-                    total_kwh = day_data['daily_energy_kwh'].iloc[0]
+                    total_kwh = day_data["daily_energy_kwh"].iloc[0]
                 else:
                     total_kwh = 0.0
 
-                daily_data.append({
-                    'date': date.strftime('%Y-%m-%d'),
-                    'production_kwh': total_kwh,
-                    'has_data': total_kwh > 0
-                })
+                daily_data.append(
+                    {
+                        "date": date.strftime("%Y-%m-%d"),
+                        "production_kwh": total_kwh,
+                        "has_data": total_kwh > 0,
+                    }
+                )
 
             except Exception as e:
                 print(f"Error getting data for {date.strftime('%Y-%m-%d')}: {e}")
-                daily_data.append({
-                    'date': date.strftime('%Y-%m-%d'),
-                    'production_kwh': 0.0,
-                    'has_data': False
-                })
+                daily_data.append(
+                    {
+                        "date": date.strftime("%Y-%m-%d"),
+                        "production_kwh": 0.0,
+                        "has_data": False,
+                    }
+                )
 
         return pd.DataFrame(daily_data)
 
@@ -468,19 +477,22 @@ class EnphaseClient:
             status = self.get_current_status()
             if status is not None:
                 return {
-                    'api_accessible': True,
-                    'current_power': status.get('current_power', 0),
-                    'energy_today': status.get('energy_today', 0) / 1000,
-                    'energy_lifetime': status.get('energy_lifetime', 0) / 1000000,
-                    'last_report': status.get('last_report_at')
+                    "api_accessible": True,
+                    "current_power": status.get("current_power", 0),
+                    "energy_today": status.get("energy_today", 0) / 1000,
+                    "energy_lifetime": status.get("energy_lifetime", 0) / 1000000,
+                    "last_report": status.get("last_report_at"),
                 }
             else:
-                return {'api_accessible': False, 'error': 'Could not retrieve status'}
+                return {"api_accessible": False, "error": "Could not retrieve status"}
         except Exception as e:
-            return {'api_accessible': False, 'error': str(e)}
+            return {"api_accessible": False, "error": str(e)}
 
-    def get_historical_data(self, start_date: Optional[Union[str, datetime]] = None,
-                          end_date: Optional[Union[str, datetime]] = None) -> pd.DataFrame:
+    def get_historical_data(
+        self,
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+    ) -> pd.DataFrame:
         """
         Get comprehensive historical data using the best available method
 
@@ -497,8 +509,12 @@ class EnphaseClient:
         # For comprehensive historical data, use energy_lifetime endpoint
         return self.get_energy_lifetime(start_date, end_date)
 
-    def export_to_csv(self, filename: str, start_date: Optional[Union[str, datetime]] = None,
-                     end_date: Optional[Union[str, datetime]] = None) -> bool:
+    def export_to_csv(
+        self,
+        filename: str,
+        start_date: Optional[Union[str, datetime]] = None,
+        end_date: Optional[Union[str, datetime]] = None,
+    ) -> bool:
         """
         Export historical data to CSV file
 

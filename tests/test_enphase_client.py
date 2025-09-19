@@ -27,10 +27,10 @@ class TestEnphaseClient:
         assert self.client.api_key == self.api_key
         assert self.client.system_id == self.system_id
         assert self.client.base_url == "https://api.enphaseenergy.com/api/v4"
-        assert self.client.headers['Authorization'] == f'Bearer {self.access_token}'
-        assert self.client.headers['key'] == self.api_key
+        assert self.client.headers["Authorization"] == f"Bearer {self.access_token}"
+        assert self.client.headers["key"] == self.api_key
 
-    @patch('src.core.enphase_client.requests.get')
+    @patch("src.core.enphase_client.requests.get")
     def test_get_current_status_success(self, mock_get):
         """Test successful current status retrieval"""
         mock_response = Mock()
@@ -38,7 +38,7 @@ class TestEnphaseClient:
         mock_response.json.return_value = {
             "current_power": 1500,
             "energy_today": 25000,
-            "energy_lifetime": 50000000
+            "energy_lifetime": 50000000,
         }
         mock_get.return_value = mock_response
 
@@ -49,7 +49,7 @@ class TestEnphaseClient:
         assert result["energy_today"] == 25000
         mock_get.assert_called_once()
 
-    @patch('src.core.enphase_client.requests.get')
+    @patch("src.core.enphase_client.requests.get")
     def test_get_current_status_rate_limit(self, mock_get):
         """Test rate limit handling"""
         mock_response = Mock()
@@ -61,7 +61,7 @@ class TestEnphaseClient:
         assert result is None
         mock_get.assert_called_once()
 
-    @patch('src.core.enphase_client.requests.get')
+    @patch("src.core.enphase_client.requests.get")
     def test_get_current_status_error(self, mock_get):
         """Test error handling"""
         mock_response = Mock()
@@ -73,7 +73,7 @@ class TestEnphaseClient:
         assert result is None
         mock_get.assert_called_once()
 
-    @patch('src.core.enphase_client.requests.get')
+    @patch("src.core.enphase_client.requests.get")
     def test_get_energy_lifetime_success(self, mock_get):
         """Test successful energy lifetime retrieval"""
         mock_response = Mock()
@@ -81,7 +81,7 @@ class TestEnphaseClient:
         mock_response.json.return_value = {
             "start_date": "2022-01-01",
             "production": [100, 200, 300],
-            "meta": {"status": "normal"}
+            "meta": {"status": "normal"},
         }
         mock_get.return_value = mock_response
 
@@ -96,7 +96,7 @@ class TestEnphaseClient:
         start_date = "2023-01-01"
         end_date = "2023-12-31"
 
-        with patch('src.core.enphase_client.requests.get') as mock_get:
+        with patch("src.core.enphase_client.requests.get") as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"production": []}
@@ -105,16 +105,16 @@ class TestEnphaseClient:
             self.client.get_energy_lifetime(start_date=start_date, end_date=end_date)
 
             call_args = mock_get.call_args
-            params = call_args[1]['params']
-            assert params['start_date'] == '2023-01-01'
-            assert params['end_date'] == '2023-12-31'
+            params = call_args[1]["params"]
+            assert params["start_date"] == "2023-01-01"
+            assert params["end_date"] == "2023-12-31"
 
     def test_datetime_parameter_handling(self):
         """Test datetime object parameter conversion"""
         start_date = datetime(2023, 1, 1)
         end_date = datetime(2023, 12, 31)
 
-        with patch('src.core.enphase_client.requests.get') as mock_get:
+        with patch("src.core.enphase_client.requests.get") as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"production": []}
@@ -123,6 +123,6 @@ class TestEnphaseClient:
             self.client.get_energy_lifetime(start_date=start_date, end_date=end_date)
 
             call_args = mock_get.call_args
-            params = call_args[1]['params']
-            assert params['start_date'] == '2023-01-01'
-            assert params['end_date'] == '2023-12-31'
+            params = call_args[1]["params"]
+            assert params["start_date"] == "2023-01-01"
+            assert params["end_date"] == "2023-12-31"

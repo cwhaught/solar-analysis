@@ -33,22 +33,22 @@ class EnphaseOAuthSetup:
         gitignore_file = self.env_file.parent / ".gitignore"
 
         checks = {
-            'env_exists': self.env_file.exists(),
-            'gitignore_exists': gitignore_file.exists(),
-            'env_in_gitignore': False,
-            'secure_permissions': False
+            "env_exists": self.env_file.exists(),
+            "gitignore_exists": gitignore_file.exists(),
+            "env_in_gitignore": False,
+            "secure_permissions": False,
         }
 
         if gitignore_file.exists():
-            with open(gitignore_file, 'r') as f:
+            with open(gitignore_file, "r") as f:
                 gitignore_content = f.read()
-                checks['env_in_gitignore'] = '.env' in gitignore_content
+                checks["env_in_gitignore"] = ".env" in gitignore_content
 
         if self.env_file.exists():
             try:
                 stat = self.env_file.stat()
                 # Check if file has secure permissions (owner read/write only)
-                checks['secure_permissions'] = oct(stat.st_mode)[-3:] == '600'
+                checks["secure_permissions"] = oct(stat.st_mode)[-3:] == "600"
             except:
                 pass
 
@@ -73,7 +73,7 @@ class EnphaseOAuthSetup:
                     env_content += f"{key}={value}\n"
 
             # Write to file
-            with open(self.env_file, 'w') as f:
+            with open(self.env_file, "w") as f:
                 f.write(env_content)
 
             # Set secure permissions (Unix/Mac only)
@@ -92,23 +92,23 @@ class EnphaseOAuthSetup:
     def load_credentials(self) -> Dict[str, Optional[str]]:
         """Load credentials from .env file"""
         credentials = {
-            'ENPHASE_CLIENT_ID': None,
-            'ENPHASE_CLIENT_SECRET': None,
-            'ENPHASE_API_KEY': None,
-            'ENPHASE_ACCESS_TOKEN': None,
-            'ENPHASE_REFRESH_TOKEN': None,
-            'ENPHASE_SYSTEM_ID': None
+            "ENPHASE_CLIENT_ID": None,
+            "ENPHASE_CLIENT_SECRET": None,
+            "ENPHASE_API_KEY": None,
+            "ENPHASE_ACCESS_TOKEN": None,
+            "ENPHASE_REFRESH_TOKEN": None,
+            "ENPHASE_SYSTEM_ID": None,
         }
 
         if not self.env_file.exists():
             return credentials
 
         try:
-            with open(self.env_file, 'r') as f:
+            with open(self.env_file, "r") as f:
                 for line in f:
                     line = line.strip()
-                    if '=' in line and not line.startswith('#'):
-                        key, value = line.split('=', 1)
+                    if "=" in line and not line.startswith("#"):
+                        key, value = line.split("=", 1)
                         if key in credentials:
                             credentials[key] = value
         except Exception as e:
@@ -160,8 +160,9 @@ class EnphaseOAuthSetup:
         except:
             print("Copy the URL above into your browser manually")
 
-    def exchange_code_for_tokens(self, authorization_code: str, client_id: str,
-                                 client_secret: str) -> Optional[Dict[str, str]]:
+    def exchange_code_for_tokens(
+        self, authorization_code: str, client_id: str, client_secret: str
+    ) -> Optional[Dict[str, str]]:
         """
         Exchange authorization code for access tokens
 
@@ -175,23 +176,24 @@ class EnphaseOAuthSetup:
         """
         # Create Basic Auth header
         auth_string = f"{client_id}:{client_secret}"
-        auth_bytes = auth_string.encode('ascii')
-        auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+        auth_bytes = auth_string.encode("ascii")
+        auth_b64 = base64.b64encode(auth_bytes).decode("ascii")
 
         headers = {
-            'Authorization': f'Basic {auth_b64}',
-            'Content-Type': 'application/x-www-form-urlencoded'
+            "Authorization": f"Basic {auth_b64}",
+            "Content-Type": "application/x-www-form-urlencoded",
         }
 
         data = {
-            'grant_type': 'authorization_code',
-            'redirect_uri': self.redirect_uri,
-            'code': authorization_code
+            "grant_type": "authorization_code",
+            "redirect_uri": self.redirect_uri,
+            "code": authorization_code,
         }
 
         try:
-            response = requests.post(f"{self.auth_base_url}/token",
-                                     data=data, headers=headers)
+            response = requests.post(
+                f"{self.auth_base_url}/token", data=data, headers=headers
+            )
 
             if response.status_code == 200:
                 return response.json()
@@ -215,10 +217,7 @@ class EnphaseOAuthSetup:
         Returns:
             Systems data or None if failed
         """
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'key': api_key
-        }
+        headers = {"Authorization": f"Bearer {access_token}", "key": api_key}
 
         try:
             response = requests.get(f"{self.api_base_url}/systems", headers=headers)
@@ -246,8 +245,10 @@ class EnphaseOAuthSetup:
         # Check security setup
         security_checks = self.check_security_setup()
 
-        if not security_checks['env_in_gitignore']:
-            print("WARNING: .env should be added to .gitignore to prevent credential exposure!")
+        if not security_checks["env_in_gitignore"]:
+            print(
+                "WARNING: .env should be added to .gitignore to prevent credential exposure!"
+            )
 
         # Step 1: Collect initial credentials
         client_id, client_secret, api_key = self.collect_initial_credentials()
@@ -275,22 +276,22 @@ class EnphaseOAuthSetup:
 
         # Step 4: Test API access
         print("Step 3: Testing API access...")
-        systems_data = self.test_api_access(tokens['access_token'], api_key)
+        systems_data = self.test_api_access(tokens["access_token"], api_key)
 
         if not systems_data:
             return False
 
         # Step 5: Save everything
-        systems_list = systems_data.get('systems', [])
-        system_id = systems_list[0]['system_id'] if systems_list else None
+        systems_list = systems_data.get("systems", [])
+        system_id = systems_list[0]["system_id"] if systems_list else None
 
         credentials = {
-            'ENPHASE_CLIENT_ID': client_id,
-            'ENPHASE_CLIENT_SECRET': client_secret,
-            'ENPHASE_API_KEY': api_key,
-            'ENPHASE_ACCESS_TOKEN': tokens['access_token'],
-            'ENPHASE_REFRESH_TOKEN': tokens.get('refresh_token'),
-            'ENPHASE_SYSTEM_ID': system_id
+            "ENPHASE_CLIENT_ID": client_id,
+            "ENPHASE_CLIENT_SECRET": client_secret,
+            "ENPHASE_API_KEY": api_key,
+            "ENPHASE_ACCESS_TOKEN": tokens["access_token"],
+            "ENPHASE_REFRESH_TOKEN": tokens.get("refresh_token"),
+            "ENPHASE_SYSTEM_ID": system_id,
         }
 
         if self.save_credentials(credentials):
@@ -298,7 +299,9 @@ class EnphaseOAuthSetup:
             print(f"Found {len(systems_list)} system(s)")
 
             for i, system in enumerate(systems_list):
-                print(f"  System {i + 1}: {system.get('system_id')} ({system.get('size_w', 'Unknown')}W)")
+                print(
+                    f"  System {i + 1}: {system.get('system_id')} ({system.get('size_w', 'Unknown')}W)"
+                )
 
             print(f"\nCredentials saved securely to {self.env_file}")
             return True
@@ -334,7 +337,7 @@ def verify_setup(env_file_path: str = ".env") -> bool:
     oauth_setup = EnphaseOAuthSetup(env_file_path)
     credentials = oauth_setup.load_credentials()
 
-    required_creds = ['ENPHASE_ACCESS_TOKEN', 'ENPHASE_API_KEY']
+    required_creds = ["ENPHASE_ACCESS_TOKEN", "ENPHASE_API_KEY"]
 
     if not all(credentials.get(key) for key in required_creds):
         print("Missing required credentials")
@@ -342,8 +345,7 @@ def verify_setup(env_file_path: str = ".env") -> bool:
 
     # Test API access
     systems_data = oauth_setup.test_api_access(
-        credentials['ENPHASE_ACCESS_TOKEN'],
-        credentials['ENPHASE_API_KEY']
+        credentials["ENPHASE_ACCESS_TOKEN"], credentials["ENPHASE_API_KEY"]
     )
 
     return systems_data is not None

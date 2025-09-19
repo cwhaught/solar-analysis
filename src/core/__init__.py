@@ -11,4 +11,4 @@ from .enphase_client import EnphaseClient
 from .data_manager import SolarDataManager
 from .oauth_setup import EnphaseOAuthSetup
 
-__all__ = ['EnphaseClient', 'SolarDataManager', 'EnphaseOAuthSetup']
+__all__ = ["EnphaseClient", "SolarDataManager", "EnphaseOAuthSetup"]

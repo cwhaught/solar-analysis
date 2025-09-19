@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 
-def load_enphase_data(filename='4136754_custom_report.csv'):
+def load_enphase_data(filename="4136754_custom_report.csv"):
     """
     Load Enphase solar data from CSV file
 
@@ -15,7 +15,7 @@ def load_enphase_data(filename='4136754_custom_report.csv'):
     """
     # Get project root directory
     project_root = Path(__file__).parent.parent
-    file_path = project_root / 'data' / 'raw' / filename
+    file_path = project_root / "data" / "raw" / filename
 
     # Load the data
     df = pd.read_csv(file_path)
