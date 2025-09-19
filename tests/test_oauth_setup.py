@@ -8,7 +8,7 @@ import tempfile
 import os
 from pathlib import Path
 
-from src.oauth_setup import EnphaseOAuthSetup
+from src.core.oauth_setup import EnphaseOAuthSetup
 
 
 class TestEnphaseOAuthSetup:
@@ -94,7 +94,7 @@ ENPHASE_SYSTEM_ID=789
         assert "redirect_uri=" in url
         assert "scope=read" in url
 
-    @patch('src.oauth_setup.requests.post')
+    @patch('src.core.oauth_setup.requests.post')
     def test_exchange_code_for_tokens_success(self, mock_post):
         """Test successful token exchange"""
         mock_response = Mock()
@@ -115,7 +115,7 @@ ENPHASE_SYSTEM_ID=789
         assert result["access_token"] == "test_access_token"
         assert result["refresh_token"] == "test_refresh_token"
 
-    @patch('src.oauth_setup.requests.post')
+    @patch('src.core.oauth_setup.requests.post')
     def test_exchange_code_for_tokens_failure(self, mock_post):
         """Test failed token exchange"""
         mock_response = Mock()

@@ -10,7 +10,7 @@ from pathlib import Path
 import tempfile
 import os
 
-from src.data_manager import SolarDataManager
+from src.core.data_manager import SolarDataManager
 
 
 class TestSolarDataManager:
@@ -134,7 +134,7 @@ class TestSolarDataManager:
         assert len(daily_df) == 1  # Should aggregate to 1 day
         assert daily_df.index[0].date() == datetime(2023, 1, 1).date()
 
-    @patch('src.data_manager.datetime')
+    @patch('src.core.data_manager.datetime')
     def test_cache_file_paths(self, mock_datetime):
         """Test cache file path generation"""
         mock_datetime.now.return_value = datetime(2023, 6, 15)

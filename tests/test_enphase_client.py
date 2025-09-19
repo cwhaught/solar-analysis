@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from datetime import datetime
 import pandas as pd
 
-from src.enphase_client import EnphaseClient
+from src.core.enphase_client import EnphaseClient
 
 
 class TestEnphaseClient:
@@ -30,7 +30,7 @@ class TestEnphaseClient:
         assert self.client.headers['Authorization'] == f'Bearer {self.access_token}'
         assert self.client.headers['key'] == self.api_key
 
-    @patch('src.enphase_client.requests.get')
+    @patch('src.core.enphase_client.requests.get')
     def test_get_current_status_success(self, mock_get):
         """Test successful current status retrieval"""
         mock_response = Mock()
@@ -49,7 +49,7 @@ class TestEnphaseClient:
         assert result["energy_today"] == 25000
         mock_get.assert_called_once()
 
-    @patch('src.enphase_client.requests.get')
+    @patch('src.core.enphase_client.requests.get')
     def test_get_current_status_rate_limit(self, mock_get):
         """Test rate limit handling"""
         mock_response = Mock()
@@ -61,7 +61,7 @@ class TestEnphaseClient:
         assert result is None
         mock_get.assert_called_once()
 
-    @patch('src.enphase_client.requests.get')
+    @patch('src.core.enphase_client.requests.get')
     def test_get_current_status_error(self, mock_get):
         """Test error handling"""
         mock_response = Mock()
@@ -73,7 +73,7 @@ class TestEnphaseClient:
         assert result is None
         mock_get.assert_called_once()
 
-    @patch('src.enphase_client.requests.get')
+    @patch('src.core.enphase_client.requests.get')
     def test_get_energy_lifetime_success(self, mock_get):
         """Test successful energy lifetime retrieval"""
         mock_response = Mock()
@@ -96,7 +96,7 @@ class TestEnphaseClient:
         start_date = "2023-01-01"
         end_date = "2023-12-31"
 
-        with patch('src.enphase_client.requests.get') as mock_get:
+        with patch('src.core.enphase_client.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"production": []}
@@ -114,7 +114,7 @@ class TestEnphaseClient:
         start_date = datetime(2023, 1, 1)
         end_date = datetime(2023, 12, 31)
 
-        with patch('src.enphase_client.requests.get') as mock_get:
+        with patch('src.core.enphase_client.requests.get') as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"production": []}
