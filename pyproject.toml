@@ -1,12 +1,26 @@
 [project]
 name = "solar-energy-analysis"
 version = "0.1.0"
-description = "AI-powered analysis of Enphase solar panel data"
+description = "AI-powered solar energy production analysis with weather integration and ML forecasting"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Christopher Haught", email = "christopher.haught@example.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.9"
+license = {text = "MIT"}
+keywords = ["solar", "energy", "machine-learning", "forecasting", "enphase", "weather"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Home Automation",
+]
 dependencies = [
     "pandas>=1.5.0",
     "numpy>=1.20.0",
