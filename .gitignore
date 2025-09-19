@@ -9,8 +9,21 @@ __pycache__/
 .venv/
 uv.lock
 
-# Environment
+# Environment variables and secrets
 .env
+.env.local
+.env.production
+.env.staging
+
+# API keys and credentials
+**/credentials.json
+**/config/secrets.yml
+**/*secret*
+**/*key*
+
+# OAuth tokens
+**/oauth_tokens.json
+**/refresh_tokens.json
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -34,4 +47,4 @@ models/*.joblib
 # Plots
 plots/
 *.png
-*.jpg
+*.jpg.env
