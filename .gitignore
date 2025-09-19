@@ -14,6 +14,7 @@ uv.lock
 .env.local
 .env.production
 .env.staging
+*.env
 
 # API keys and credentials
 **/credentials.json
@@ -47,4 +48,4 @@ models/*.joblib
 # Plots
 plots/
 *.png
-*.jpg.env
+*.jpg
