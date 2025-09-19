@@ -148,6 +148,124 @@ class EnphaseClient:
 
         return df
 
+    def get_rgm_stats(self, start_date: Union[str, datetime],
+                     end_date: Union[str, datetime]) -> pd.DataFrame:
+        """
+        Get revenue-grade meter statistics with 15-minute intervals
+
+        Provides detailed 15-minute interval data from revenue-grade meters
+        including both energy delivered (wh_del) and current power (curr_w).
+
+        Args:
+            start_date: Start date
+            end_date: End date (limited to 7 days from start_date)
+
+        Returns:
+            DataFrame with 15-minute revenue-grade meter data
+        """
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+        # Check 7-day limit
+        if (end_date - start_date).days > 7:
+            print("Warning: rgm_stats endpoint limited to 7 days. Truncating request.")
+            end_date = start_date + timedelta(days=7)
+
+        start_ts = int(start_date.timestamp())
+        end_ts = int(end_date.timestamp())
+
+        url = f"{self.base_url}/systems/{self.system_id}/rgm_stats"
+        params = {
+            'start_at': start_ts,
+            'end_at': end_ts
+        }
+
+        response = requests.get(url, headers=self.headers, params=params)
+
+        if response.status_code == 200:
+            data = response.json()
+            return self._parse_rgm_stats(data)
+
+        elif response.status_code == 422:
+            error_detail = response.json().get('details', 'Unknown error')
+            print(f"API Error 422: {error_detail}")
+            return pd.DataFrame()
+        elif response.status_code == 429:
+            print("Rate limit exceeded. Please wait before making more requests.")
+            return pd.DataFrame()
+        else:
+            print(f"Error getting RGM stats: {response.status_code}")
+            return pd.DataFrame()
+
+    def _parse_rgm_stats(self, data: Dict) -> pd.DataFrame:
+        """Parse rgm_stats API response into DataFrame"""
+        if 'meter_intervals' not in data:
+            return pd.DataFrame()
+
+        meter_intervals = data['meter_intervals']
+
+        if not meter_intervals:
+            return pd.DataFrame()
+
+        all_records = []
+
+        # Process each meter
+        for meter_data in meter_intervals:
+            meter_serial = meter_data.get('meter_serial_number', 'unknown')
+            envoy_serial = meter_data.get('envoy_serial_number', 'unknown')
+            intervals = meter_data.get('intervals', [])
+
+            for interval in intervals:
+                dt = pd.to_datetime(interval['end_at'], unit='s')
+
+                # Safely handle None values
+                wh_del = interval.get('wh_del', 0) or 0
+                curr_w = interval.get('curr_w', 0) or 0
+
+                record = {
+                    'datetime': dt,
+                    'channel': interval.get('channel', 1),
+                    'energy_delivered_wh': wh_del,
+                    'energy_delivered_kwh': wh_del / 1000,
+                    'current_power_w': curr_w,
+                    'current_power_kw': curr_w / 1000,
+                    'meter_serial': meter_serial,
+                    'envoy_serial': envoy_serial
+                }
+                all_records.append(record)
+
+        if all_records:
+            df = pd.DataFrame(all_records)
+            df.set_index('datetime', inplace=True)
+            df.sort_index(inplace=True)
+            return df
+
+        return pd.DataFrame()
+
+    def get_recent_detailed_data(self, days_back: int = 3) -> pd.DataFrame:
+        """
+        Get recent detailed 15-minute data using rgm_stats
+
+        Convenient method for getting recent high-resolution data
+        for real-time monitoring and analysis.
+
+        Args:
+            days_back: Number of days to retrieve (max 7)
+
+        Returns:
+            DataFrame with 15-minute meter data
+        """
+        if days_back > 7:
+            print("Warning: Maximum 7 days for detailed data. Using 7 days.")
+            days_back = 7
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days_back)
+
+        return self.get_rgm_stats(start_date, end_date)
+
     def get_daily_production(self, start_date: Union[str, datetime],
                            end_date: Union[str, datetime]) -> pd.DataFrame:
         """
