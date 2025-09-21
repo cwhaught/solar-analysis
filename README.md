@@ -3,18 +3,25 @@
 AI-powered analysis of Enphase solar panel data for production forecasting and optimization.
 
 ## Features
-- Solar production forecasting using machine learning
-- Seasonal pattern analysis
-- Energy consumption optimization
-- Anomaly detection for system health
+- 🌍 **Location-aware modeling** - Solar calculations based on your geographic location
+- 🤖 **Machine learning forecasting** - Predict solar production using advanced ML models
+- 📊 **Seasonal pattern analysis** - Understand how location affects seasonal variations
+- ⚡ **Energy optimization** - Optimize consumption patterns for maximum solar benefit
+- 🚨 **Anomaly detection** - Monitor system health and identify performance issues
+- ☀️ **Solar geometry** - Accurate sunrise/sunset times and solar elevation calculations
 
 ## Quick Start (No Solar Data Required!)
-🚀 **Try immediately with mock data:**
+🚀 **Try immediately with location-specific mock data:**
 1. Clone repository
 2. Install UV: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or see [UV docs](https://docs.astral.sh/uv/))
 3. Install dependencies: `uv sync`
-4. Generate mock data: `uv run python scripts/generate_mock_data.py`
+4. Generate location-specific data: `uv run python scripts/generate_mock_data.py denver` (or your city)
 5. Run demo: `uv run jupyter lab notebooks/00_quick_start_demo.ipynb`
+
+🌍 **Location options:**
+- **Predefined cities**: `denver`, `phoenix`, `miami`, `seattle`, `new_york`, `los_angeles`, `chicago`, `atlanta`, `london`, `berlin`, `tokyo`, `sydney`
+- **Custom coordinates**: `uv run python scripts/generate_mock_data.py 37.7749 -122.4194 "San Francisco"`
+- **Generic data**: `uv run python scripts/generate_mock_data.py` (no location)
 
 ## Full Setup (For Real Solar Data)
 1. Clone repository
@@ -68,6 +75,13 @@ ENPHASE_SYSTEM_ID=your_actual_system_id
 - Mock data generator creates realistic seasonal and daily patterns
 
 **Available Datasets:**
-- `mock_solar_data.csv`: 3 months of simulated 10kW residential system data
-- Your own Enphase CSV exports
-- Live API data integration
+- 🌍 **Location-specific mock data**: `mock_solar_data_[city].csv` with accurate solar geometry
+- 🏠 **Generic mock data**: `mock_solar_data.csv` for general testing
+- 📊 **Your Enphase CSV exports**: Real historical data from your system
+- 🔄 **Live API integration**: Fresh data from Enphase API
+
+**Location Features:**
+- Accurate sunrise/sunset times for your latitude
+- Solar elevation angles and theoretical irradiance calculations
+- Climate-specific weather patterns and seasonal variations
+- Enhanced ML model accuracy with location-aware features

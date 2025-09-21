@@ -12,13 +12,14 @@ from datetime import datetime, timedelta
 import math
 import random
 
-def generate_mock_solar_data(start_date="2024-01-01", num_days=90):
+def generate_mock_solar_data(start_date="2024-01-01", num_days=90, location=None):
     """
     Generate realistic mock solar energy data
 
     Args:
         start_date: Start date for data generation
         num_days: Number of days to generate
+        location: LocationManager instance for location-specific modeling
 
     Returns:
         DataFrame with mock solar data
@@ -35,7 +36,10 @@ def generate_mock_solar_data(start_date="2024-01-01", num_days=90):
 
     for ts in timestamps:
         # Calculate solar production based on time of day and season
-        production = calculate_solar_production(ts)
+        if location:
+            production = calculate_location_based_solar_production(ts, location)
+        else:
+            production = calculate_solar_production(ts)
 
         # Calculate realistic consumption
         consumption = calculate_consumption(ts)
@@ -100,6 +104,39 @@ def calculate_solar_production(timestamp):
 
     return max(0, production)
 
+def calculate_location_based_solar_production(timestamp, location_manager):
+    """Calculate location-aware solar production for given timestamp"""
+
+    # Get solar elevation and theoretical irradiance
+    elevation = location_manager.get_solar_elevation(timestamp)
+    theoretical_irradiance = location_manager.get_theoretical_solar_irradiance(timestamp)
+
+    if elevation <= 0 or theoretical_irradiance <= 0:
+        return 0
+
+    # Base production parameters (for a ~10kW system)
+    system_capacity = 10000  # 10kW system in watts
+    system_efficiency = 0.85  # Overall system efficiency
+
+    # Convert irradiance to production (simplified)
+    # Assuming standard test conditions (1000 W/m²) for rated power
+    production_factor = theoretical_irradiance / 1000 * system_efficiency
+
+    # 15-minute production in Wh
+    production_15min = system_capacity * production_factor * 0.25  # 15 min = 0.25 hours
+
+    # Get location-specific adjustments
+    seasonal_factor = location_manager.get_seasonal_adjustment_factor(timestamp)
+    weather_factor = location_manager.get_weather_adjustment_factor(timestamp)
+
+    # Apply location adjustments
+    production_15min *= seasonal_factor * weather_factor
+
+    # Add some random variation for realism
+    production_15min *= random.uniform(0.95, 1.05)
+
+    return max(0, production_15min)
+
 def calculate_consumption(timestamp):
     """Calculate realistic household energy consumption"""
 
@@ -142,10 +179,54 @@ def calculate_consumption(timestamp):
 
 def main():
     """Generate and save mock data"""
+    import sys
+    import os
+
+    # Add the src directory to Python path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = os.path.join(os.path.dirname(script_dir), 'src')
+    sys.path.insert(0, src_dir)
+
     print("🔄 Generating mock solar energy data...")
 
+    # Optional: Create location-specific data
+    location = None
+    location_suffix = ""
+
+    # Check for command line arguments for location
+    if len(sys.argv) > 1:
+        try:
+            from core.location_manager import LocationManager
+
+            if len(sys.argv) == 2:
+                # City name provided
+                city_name = sys.argv[1]
+                location = LocationManager.from_city(city_name)
+                location_suffix = f"_{city_name.lower().replace(' ', '_')}"
+                print(f"📍 Generating data for: {location.location_name}")
+            elif len(sys.argv) >= 3:
+                # Lat/Lon provided
+                lat = float(sys.argv[1])
+                lon = float(sys.argv[2])
+                name = sys.argv[3] if len(sys.argv) > 3 else f"{lat:.2f}_{lon:.2f}"
+                location = LocationManager(lat, lon, location_name=name)
+                location_suffix = f"_{name.lower().replace(' ', '_')}"
+                print(f"📍 Generating data for: {location.location_name}")
+
+            if location:
+                # Display location characteristics
+                summary = location.get_location_summary()
+                print(f"   Climate: {summary['climate_type']}")
+                print(f"   Summer daylight: {summary['summer_daylight_hours']:.1f} hours")
+                print(f"   Winter daylight: {summary['winter_daylight_hours']:.1f} hours")
+
+        except Exception as e:
+            print(f"⚠️ Error setting up location: {e}")
+            print("   Falling back to generic solar modeling")
+            location = None
+
     # Generate 3 months of data (good for demo)
-    mock_data = generate_mock_solar_data(start_date="2024-01-01", num_days=90)
+    mock_data = generate_mock_solar_data(start_date="2024-01-01", num_days=90, location=location)
 
     print(f"✅ Generated {len(mock_data):,} records ({len(mock_data)/96:.0f} days)")
     print(f"📅 Date range: {mock_data.iloc[0]['Date/Time']} to {mock_data.iloc[-1]['Date/Time']}")
@@ -163,17 +244,40 @@ def main():
     print(f"  Daily avg production: {production_kwh / 90:.1f} kWh/day")
     print(f"  Daily avg consumption: {consumption_kwh / 90:.1f} kWh/day")
 
-    # Save to CSV
-    output_path = "data/raw/mock_solar_data.csv"
+    # Save to CSV with location suffix
+    output_path = f"data/raw/mock_solar_data{location_suffix}.csv"
     mock_data.to_csv(output_path, index=False)
     print(f"\n💾 Saved mock data to: {output_path}")
+
+    if location:
+        print(f"\n📍 Location Details:")
+        summary = location.get_location_summary()
+        for key, value in summary.items():
+            if isinstance(value, float):
+                print(f"   {key.replace('_', ' ').title()}: {value:.2f}")
+            else:
+                print(f"   {key.replace('_', ' ').title()}: {value}")
 
     # Display first few rows
     print(f"\n📋 Sample data (first 5 rows):")
     print(mock_data.head().to_string(index=False))
 
     print(f"\n🎯 Mock data is ready for analysis!")
-    print(f"   To use: Update notebooks to point to 'mock_solar_data.csv'")
+    print(f"   To use: Update notebooks to point to '{output_path.split('/')[-1]}'")
+
+    if not location:
+        print(f"\n💡 Usage Examples:")
+        print(f"   Generate for specific cities:")
+        print(f"   python scripts/generate_mock_data.py denver")
+        print(f"   python scripts/generate_mock_data.py phoenix")
+        print(f"   python scripts/generate_mock_data.py london")
+        print(f"")
+        print(f"   Generate for custom coordinates:")
+        print(f"   python scripts/generate_mock_data.py 37.7749 -122.4194 'San Francisco'")
+        print(f"   python scripts/generate_mock_data.py 51.5074 -0.1278 'London'")
+        print(f"")
+        print(f"   Available cities: new_york, los_angeles, chicago, denver, miami,")
+        print(f"                     seattle, phoenix, atlanta, london, berlin, tokyo, sydney")
 
 if __name__ == "__main__":
     main()
