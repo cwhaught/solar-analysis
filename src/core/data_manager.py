@@ -52,7 +52,10 @@ class SolarDataManager:
         self.logger = logging.getLogger(__name__)
 
         # Detect if using mock client
-        self._is_mock_client = hasattr(enphase_client, '__class__') and 'Mock' in enphase_client.__class__.__name__
+        self._is_mock_client = (
+            hasattr(enphase_client, "__class__")
+            and "Mock" in enphase_client.__class__.__name__
+        )
 
     def load_csv_data(self, force_reload: bool = False) -> pd.DataFrame:
         """

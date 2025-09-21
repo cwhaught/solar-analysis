@@ -34,19 +34,21 @@ def load_location_from_env(env_path: Optional[str] = None) -> Optional[LocationM
     # Try to create location from environment variables
 
     # Option 1: City name
-    city_name = os.environ.get('SOLAR_LOCATION_CITY')
-    if city_name and city_name.strip() and city_name != 'your_city_here':
+    city_name = os.environ.get("SOLAR_LOCATION_CITY")
+    if city_name and city_name.strip() and city_name != "your_city_here":
         try:
             location = LocationManager.from_city(city_name.strip())
             return location
         except ValueError:
             print(f"⚠️ Unknown city '{city_name}' in SOLAR_LOCATION_CITY")
             print("   Available cities: new_york, los_angeles, chicago, denver, miami,")
-            print("                     seattle, phoenix, atlanta, london, berlin, tokyo, sydney")
+            print(
+                "                     seattle, phoenix, atlanta, london, berlin, tokyo, sydney"
+            )
 
     # Option 2: Custom coordinates
-    lat_str = os.environ.get('SOLAR_LOCATION_LATITUDE')
-    lon_str = os.environ.get('SOLAR_LOCATION_LONGITUDE')
+    lat_str = os.environ.get("SOLAR_LOCATION_LATITUDE")
+    lon_str = os.environ.get("SOLAR_LOCATION_LONGITUDE")
 
     if lat_str and lon_str and lat_str.strip() and lon_str.strip():
         try:
@@ -54,16 +56,26 @@ def load_location_from_env(env_path: Optional[str] = None) -> Optional[LocationM
             longitude = float(lon_str.strip())
 
             # Optional parameters
-            location_name = os.environ.get('SOLAR_LOCATION_NAME', f"{latitude:.3f}, {longitude:.3f}")
-            timezone_str = os.environ.get('SOLAR_LOCATION_TIMEZONE')
+            location_name = os.environ.get(
+                "SOLAR_LOCATION_NAME", f"{latitude:.3f}, {longitude:.3f}"
+            )
+            timezone_str = os.environ.get("SOLAR_LOCATION_TIMEZONE")
 
             # Clean up values
-            if location_name and location_name.strip() and location_name != 'your_location_here':
+            if (
+                location_name
+                and location_name.strip()
+                and location_name != "your_location_here"
+            ):
                 location_name = location_name.strip()
             else:
                 location_name = f"{latitude:.3f}, {longitude:.3f}"
 
-            if timezone_str and timezone_str.strip() and timezone_str != 'your_timezone_here':
+            if (
+                timezone_str
+                and timezone_str.strip()
+                and timezone_str != "your_timezone_here"
+            ):
                 timezone_str = timezone_str.strip()
             else:
                 timezone_str = None
@@ -72,7 +84,7 @@ def load_location_from_env(env_path: Optional[str] = None) -> Optional[LocationM
                 latitude=latitude,
                 longitude=longitude,
                 timezone_str=timezone_str,
-                location_name=location_name
+                location_name=location_name,
             )
             return location
 
@@ -88,11 +100,11 @@ def load_location_from_env(env_path: Optional[str] = None) -> Optional[LocationM
 def _load_env_file(env_path: Path) -> None:
     """Load environment variables from .env file"""
     try:
-        with open(env_path, 'r') as f:
+        with open(env_path, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
 
@@ -118,21 +130,21 @@ def get_location_summary_from_env(env_path: Optional[str] = None) -> dict:
 
     if location:
         summary = location.get_location_summary()
-        summary['configured'] = True
-        summary['source'] = 'environment'
+        summary["configured"] = True
+        summary["source"] = "environment"
         return summary
     else:
         return {
-            'configured': False,
-            'source': 'none',
-            'message': 'No location configured in environment variables'
+            "configured": False,
+            "source": "none",
+            "message": "No location configured in environment variables",
         }
 
 
 def create_location_with_fallback(
     preferred_city: Optional[str] = None,
-    fallback_city: str = 'denver',
-    env_path: Optional[str] = None
+    fallback_city: str = "denver",
+    env_path: Optional[str] = None,
 ) -> LocationManager:
     """
     Create location with fallback strategy
@@ -169,7 +181,9 @@ def create_location_with_fallback(
     except ValueError:
         # Final fallback to Denver coordinates
         print(f"⚠️ Unknown fallback city '{fallback_city}', using Denver coordinates")
-        return LocationManager(39.7392, -104.9903, 'America/Denver', 'Denver, CO (fallback)')
+        return LocationManager(
+            39.7392, -104.9903, "America/Denver", "Denver, CO (fallback)"
+        )
 
 
 # Convenience function for notebooks
@@ -182,5 +196,5 @@ def create_notebook_location() -> LocationManager:
     """
     return create_location_with_fallback(
         env_path="../.env",  # Look for .env in parent directory (project root)
-        fallback_city='denver'
+        fallback_city="denver",
     )

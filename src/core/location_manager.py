@@ -21,8 +21,13 @@ class LocationManager:
     Manages location-specific solar energy calculations and weather modeling
     """
 
-    def __init__(self, latitude: float, longitude: float, timezone_str: str = None,
-                 location_name: str = None):
+    def __init__(
+        self,
+        latitude: float,
+        longitude: float,
+        timezone_str: str = None,
+        location_name: str = None,
+    ):
         """
         Initialize location manager
 
@@ -86,10 +91,10 @@ class LocationManager:
             seasonal_variation = 0.8  # High seasonal variation
 
         return {
-            'cloud_factor': cloud_factor,
-            'humidity_factor': humidity_factor,
-            'seasonal_variation': seasonal_variation,
-            'atmospheric_transmission': 0.75 - abs_lat * 0.002  # Rough approximation
+            "cloud_factor": cloud_factor,
+            "humidity_factor": humidity_factor,
+            "seasonal_variation": seasonal_variation,
+            "atmospheric_transmission": 0.75 - abs_lat * 0.002,  # Rough approximation
         }
 
     def get_solar_declination(self, day_of_year: int) -> float:
@@ -103,7 +108,9 @@ class LocationManager:
             Solar declination in degrees
         """
         # Solar declination varies sinusoidally throughout the year
-        declination = self.EARTH_TILT * math.sin(math.radians(360 * (284 + day_of_year) / 365))
+        declination = self.EARTH_TILT * math.sin(
+            math.radians(360 * (284 + day_of_year) / 365)
+        )
         return declination
 
     def get_sunrise_sunset(self, date: datetime) -> Tuple[float, float]:
@@ -168,8 +175,9 @@ class LocationManager:
         hour_angle = math.radians(15 * (solar_time - 12))
 
         # Solar elevation
-        sin_elevation = (math.sin(latitude_rad) * math.sin(declination) +
-                        math.cos(latitude_rad) * math.cos(declination) * math.cos(hour_angle))
+        sin_elevation = math.sin(latitude_rad) * math.sin(declination) + math.cos(
+            latitude_rad
+        ) * math.cos(declination) * math.cos(hour_angle)
 
         elevation = math.degrees(math.asin(max(-1, min(1, sin_elevation))))
         return max(0, elevation)  # Sun below horizon = 0
@@ -194,7 +202,9 @@ class LocationManager:
         air_mass = min(air_mass, 10)  # Cap extreme values
 
         # Atmospheric attenuation
-        atmospheric_transmission = self.climate_factors['atmospheric_transmission'] ** air_mass
+        atmospheric_transmission = (
+            self.climate_factors["atmospheric_transmission"] ** air_mass
+        )
 
         # Direct normal irradiance
         dni = self.SOLAR_CONSTANT * atmospheric_transmission
@@ -217,15 +227,21 @@ class LocationManager:
         day_of_year = date.timetuple().tm_yday
 
         # Peak around summer solstice (day 172)
-        seasonal_peak_day = 172 if self.latitude >= 0 else 355  # Reverse for southern hemisphere
+        seasonal_peak_day = (
+            172 if self.latitude >= 0 else 355
+        )  # Reverse for southern hemisphere
 
         # Calculate seasonal factor
         seasonal_angle = 2 * math.pi * (day_of_year - seasonal_peak_day) / 365
-        base_seasonal = 1 + self.climate_factors['seasonal_variation'] * math.cos(seasonal_angle)
+        base_seasonal = 1 + self.climate_factors["seasonal_variation"] * math.cos(
+            seasonal_angle
+        )
 
         return max(0.2, base_seasonal)  # Minimum 20% of peak
 
-    def get_weather_adjustment_factor(self, date: datetime, base_randomness: bool = True) -> float:
+    def get_weather_adjustment_factor(
+        self, date: datetime, base_randomness: bool = True
+    ) -> float:
         """
         Get weather-based adjustment factor
 
@@ -240,9 +256,11 @@ class LocationManager:
         day_of_year = date.timetuple().tm_yday
 
         # Many locations have more clouds in winter
-        seasonal_cloud_factor = 0.8 + 0.2 * math.cos(2 * math.pi * (day_of_year - 172) / 365)
+        seasonal_cloud_factor = 0.8 + 0.2 * math.cos(
+            2 * math.pi * (day_of_year - 172) / 365
+        )
 
-        base_factor = self.climate_factors['cloud_factor'] * seasonal_cloud_factor
+        base_factor = self.climate_factors["cloud_factor"] * seasonal_cloud_factor
 
         if base_randomness:
             # Add day-to-day weather variation
@@ -276,13 +294,13 @@ class LocationManager:
         peak_irradiance = self.get_theoretical_solar_irradiance(noon_time)
 
         return {
-            'sunrise_hour': sunrise,
-            'sunset_hour': sunset,
-            'daylight_hours': sunset - sunrise,
-            'seasonal_factor': seasonal_factor,
-            'weather_factor': weather_factor,
-            'peak_irradiance': peak_irradiance,
-            'daily_solar_factor': seasonal_factor * weather_factor
+            "sunrise_hour": sunrise,
+            "sunset_hour": sunset,
+            "daylight_hours": sunset - sunrise,
+            "seasonal_factor": seasonal_factor,
+            "weather_factor": weather_factor,
+            "peak_irradiance": peak_irradiance,
+            "daily_solar_factor": seasonal_factor * weather_factor,
         }
 
     def enhance_solar_data(self, solar_data: pd.DataFrame) -> pd.DataFrame:
@@ -298,35 +316,51 @@ class LocationManager:
         enhanced_data = solar_data.copy()
 
         # Add location-based columns
-        enhanced_data['solar_elevation'] = enhanced_data.index.map(self.get_solar_elevation)
-        enhanced_data['theoretical_irradiance'] = enhanced_data.index.map(self.get_theoretical_solar_irradiance)
-        enhanced_data['seasonal_factor'] = enhanced_data.index.map(lambda x: self.get_seasonal_adjustment_factor(x))
-        enhanced_data['weather_factor'] = enhanced_data.index.map(lambda x: self.get_weather_adjustment_factor(x))
+        enhanced_data["solar_elevation"] = enhanced_data.index.map(
+            self.get_solar_elevation
+        )
+        enhanced_data["theoretical_irradiance"] = enhanced_data.index.map(
+            self.get_theoretical_solar_irradiance
+        )
+        enhanced_data["seasonal_factor"] = enhanced_data.index.map(
+            lambda x: self.get_seasonal_adjustment_factor(x)
+        )
+        enhanced_data["weather_factor"] = enhanced_data.index.map(
+            lambda x: self.get_weather_adjustment_factor(x)
+        )
 
         # Add sunrise/sunset info
-        enhanced_data['date'] = enhanced_data.index.date
+        enhanced_data["date"] = enhanced_data.index.date
         daily_profiles = {}
 
-        for date in enhanced_data['date'].unique():
+        for date in enhanced_data["date"].unique():
             daily_profiles[date] = self.calculate_location_solar_profile(
                 datetime.combine(date, datetime.min.time())
             )
 
-        enhanced_data['sunrise_hour'] = enhanced_data['date'].map(lambda x: daily_profiles[x]['sunrise_hour'])
-        enhanced_data['sunset_hour'] = enhanced_data['date'].map(lambda x: daily_profiles[x]['sunset_hour'])
-        enhanced_data['daylight_hours'] = enhanced_data['date'].map(lambda x: daily_profiles[x]['daylight_hours'])
+        enhanced_data["sunrise_hour"] = enhanced_data["date"].map(
+            lambda x: daily_profiles[x]["sunrise_hour"]
+        )
+        enhanced_data["sunset_hour"] = enhanced_data["date"].map(
+            lambda x: daily_profiles[x]["sunset_hour"]
+        )
+        enhanced_data["daylight_hours"] = enhanced_data["date"].map(
+            lambda x: daily_profiles[x]["daylight_hours"]
+        )
 
         # Clean up temporary column
-        enhanced_data.drop('date', axis=1, inplace=True)
+        enhanced_data.drop("date", axis=1, inplace=True)
 
         # Add metadata
-        enhanced_data.attrs.update({
-            'location_name': self.location_name,
-            'latitude': self.latitude,
-            'longitude': self.longitude,
-            'timezone': self.timezone_str,
-            'enhanced_with_location': True
-        })
+        enhanced_data.attrs.update(
+            {
+                "location_name": self.location_name,
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+                "timezone": self.timezone_str,
+                "enhanced_with_location": True,
+            }
+        )
 
         return enhanced_data
 
@@ -340,16 +374,16 @@ class LocationManager:
         winter_profile = self.calculate_location_solar_profile(sample_date_winter)
 
         return {
-            'location_name': self.location_name,
-            'latitude': self.latitude,
-            'longitude': self.longitude,
-            'timezone': self.timezone_str or 'Not specified',
-            'climate_type': self._get_climate_description(),
-            'summer_daylight_hours': summer_profile['daylight_hours'],
-            'winter_daylight_hours': winter_profile['daylight_hours'],
-            'seasonal_variation': self.climate_factors['seasonal_variation'],
-            'typical_cloud_factor': self.climate_factors['cloud_factor'],
-            'atmospheric_clarity': self.climate_factors['atmospheric_transmission']
+            "location_name": self.location_name,
+            "latitude": self.latitude,
+            "longitude": self.longitude,
+            "timezone": self.timezone_str or "Not specified",
+            "climate_type": self._get_climate_description(),
+            "summer_daylight_hours": summer_profile["daylight_hours"],
+            "winter_daylight_hours": winter_profile["daylight_hours"],
+            "seasonal_variation": self.climate_factors["seasonal_variation"],
+            "typical_cloud_factor": self.climate_factors["cloud_factor"],
+            "atmospheric_clarity": self.climate_factors["atmospheric_transmission"],
         }
 
     def _get_climate_description(self) -> str:
@@ -368,7 +402,7 @@ class LocationManager:
             return "Arctic/Antarctic"
 
     @classmethod
-    def from_city(cls, city_name: str) -> 'LocationManager':
+    def from_city(cls, city_name: str) -> "LocationManager":
         """
         Create LocationManager from city name using predefined coordinates
 
@@ -380,27 +414,34 @@ class LocationManager:
         """
         # Common cities database (can be expanded)
         cities = {
-            'new_york': (40.7128, -74.0060, 'America/New_York', 'New York, NY'),
-            'los_angeles': (34.0522, -118.2437, 'America/Los_Angeles', 'Los Angeles, CA'),
-            'chicago': (41.8781, -87.6298, 'America/Chicago', 'Chicago, IL'),
-            'denver': (39.7392, -104.9903, 'America/Denver', 'Denver, CO'),
-            'miami': (25.7617, -80.1918, 'America/New_York', 'Miami, FL'),
-            'seattle': (47.6062, -122.3321, 'America/Los_Angeles', 'Seattle, WA'),
-            'phoenix': (33.4484, -112.0740, 'America/Phoenix', 'Phoenix, AZ'),
-            'atlanta': (33.7490, -84.3880, 'America/New_York', 'Atlanta, GA'),
-            'london': (51.5074, -0.1278, 'Europe/London', 'London, UK'),
-            'berlin': (52.5200, 13.4050, 'Europe/Berlin', 'Berlin, Germany'),
-            'tokyo': (35.6762, 139.6503, 'Asia/Tokyo', 'Tokyo, Japan'),
-            'sydney': (-33.8688, 151.2093, 'Australia/Sydney', 'Sydney, Australia'),
+            "new_york": (40.7128, -74.0060, "America/New_York", "New York, NY"),
+            "los_angeles": (
+                34.0522,
+                -118.2437,
+                "America/Los_Angeles",
+                "Los Angeles, CA",
+            ),
+            "chicago": (41.8781, -87.6298, "America/Chicago", "Chicago, IL"),
+            "denver": (39.7392, -104.9903, "America/Denver", "Denver, CO"),
+            "miami": (25.7617, -80.1918, "America/New_York", "Miami, FL"),
+            "seattle": (47.6062, -122.3321, "America/Los_Angeles", "Seattle, WA"),
+            "phoenix": (33.4484, -112.0740, "America/Phoenix", "Phoenix, AZ"),
+            "atlanta": (33.7490, -84.3880, "America/New_York", "Atlanta, GA"),
+            "london": (51.5074, -0.1278, "Europe/London", "London, UK"),
+            "berlin": (52.5200, 13.4050, "Europe/Berlin", "Berlin, Germany"),
+            "tokyo": (35.6762, 139.6503, "Asia/Tokyo", "Tokyo, Japan"),
+            "sydney": (-33.8688, 151.2093, "Australia/Sydney", "Sydney, Australia"),
         }
 
-        city_key = city_name.lower().replace(' ', '_').replace(',', '')
+        city_key = city_name.lower().replace(" ", "_").replace(",", "")
 
         if city_key in cities:
             lat, lon, tz, display_name = cities[city_key]
             return cls(lat, lon, tz, display_name)
         else:
-            raise ValueError(f"City '{city_name}' not found in database. Use custom coordinates instead.")
+            raise ValueError(
+                f"City '{city_name}' not found in database. Use custom coordinates instead."
+            )
 
     def __str__(self) -> str:
         """String representation"""
@@ -408,5 +449,7 @@ class LocationManager:
 
     def __repr__(self) -> str:
         """Detailed representation"""
-        return (f"LocationManager(latitude={self.latitude}, longitude={self.longitude}, "
-                f"timezone='{self.timezone_str}', location_name='{self.location_name}')")
+        return (
+            f"LocationManager(latitude={self.latitude}, longitude={self.longitude}, "
+            f"timezone='{self.timezone_str}', location_name='{self.location_name}')"
+        )
