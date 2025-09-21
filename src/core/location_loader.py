@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from typing import Optional
 from .location_manager import LocationManager
+from .electricity_rates import ElectricityRatesManager
 
 
 def load_location_from_env(env_path: Optional[str] = None) -> Optional[LocationManager]:
@@ -198,3 +199,34 @@ def create_notebook_location() -> LocationManager:
         env_path="../.env",  # Look for .env in parent directory (project root)
         fallback_city="denver",
     )
+
+
+def get_location_electricity_rates(location: LocationManager, nrel_api_key: Optional[str] = None) -> dict:
+    """
+    Get electricity rates for a location
+
+    Args:
+        location: LocationManager instance
+        nrel_api_key: Optional NREL API key for more accurate data
+
+    Returns:
+        Dictionary with electricity rate information
+    """
+    rates_manager = ElectricityRatesManager(nrel_api_key)
+    return rates_manager.get_rate_summary(location.latitude, location.longitude)
+
+
+def create_notebook_location_with_rates() -> tuple[LocationManager, dict]:
+    """
+    Convenience function for notebooks to create location with electricity rates
+
+    Returns:
+        Tuple of (LocationManager instance, electricity rates dict)
+    """
+    location = create_notebook_location()
+
+    # Try to get NREL API key from environment
+    nrel_api_key = os.environ.get('NREL_API_KEY')
+    rates = get_location_electricity_rates(location, nrel_api_key)
+
+    return location, rates

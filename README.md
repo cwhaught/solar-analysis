@@ -9,6 +9,7 @@ AI-powered analysis of Enphase solar panel data for production forecasting and o
 - ⚡ **Energy optimization** - Optimize consumption patterns for maximum solar benefit
 - 🚨 **Anomaly detection** - Monitor system health and identify performance issues
 - ☀️ **Solar geometry** - Accurate sunrise/sunset times and solar elevation calculations
+- 💰 **Location-based electricity rates** - Automatic electricity rate lookup for accurate financial analysis
 
 ## Quick Start (No Solar Data Required!)
 🚀 **Try immediately with location-specific mock data:**
@@ -52,9 +53,46 @@ ENPHASE_API_KEY=your_actual_api_key
 ENPHASE_ACCESS_TOKEN=your_actual_access_token
 ENPHASE_REFRESH_TOKEN=your_actual_refresh_token
 ENPHASE_SYSTEM_ID=your_actual_system_id
+
+# Location Configuration (Optional)
+SOLAR_LOCATION_CITY=denver  # or your city
+# OR use custom coordinates:
+# SOLAR_LOCATION_LATITUDE=39.7392
+# SOLAR_LOCATION_LONGITUDE=-104.9903
+
+# Electricity Rates (Optional - for enhanced financial analysis)
+# Get free API key from https://developer.nrel.gov/signup/
+NREL_API_KEY=your_nrel_api_key_here
 ```
 
 **Without API credentials:** All notebooks work perfectly with CSV data only (demo mode).
+
+## Electricity Rates & Financial Analysis
+💰 **Automatic location-based electricity rate lookup for accurate financial projections:**
+
+**Features:**
+- 🌍 **Automatic rate detection** - Uses your configured location to find local electricity rates
+- 📊 **Multiple data sources** - NREL API for utility-specific rates + state averages fallback
+- 💡 **Feed-in tariff estimation** - Calculates solar export compensation (typically 80% of retail rate)
+- 📈 **National comparisons** - Shows how your local rates compare to national average
+- 🎯 **High accuracy** - Uses 2025 state-level data with optional NREL API enhancement
+
+**Rate Sources (in priority order):**
+1. **NREL API** (highest accuracy) - Utility-specific rates from coordinates
+2. **State averages** (medium accuracy) - 2025 state-level residential rates
+3. **National average** (fallback) - 16.22¢/kWh national residential average
+
+**Configuration:**
+```bash
+# Basic location (uses state average rates)
+SOLAR_LOCATION_CITY=denver
+
+# Enhanced rates (utility-specific via NREL API)
+NREL_API_KEY=your_free_api_key_from_nrel_gov
+```
+
+**Usage in notebooks:**
+All financial analysis automatically uses location-specific rates - no hardcoded values!
 
 ## Development
 - Install with dev dependencies: `uv sync --extra dev`
@@ -84,4 +122,5 @@ ENPHASE_SYSTEM_ID=your_actual_system_id
 - Accurate sunrise/sunset times for your latitude
 - Solar elevation angles and theoretical irradiance calculations
 - Climate-specific weather patterns and seasonal variations
+- Location-based electricity rates for accurate financial modeling
 - Enhanced ML model accuracy with location-aware features
