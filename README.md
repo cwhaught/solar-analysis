@@ -89,10 +89,43 @@ SOLAR_LOCATION_CITY=denver
 
 # Enhanced rates (utility-specific via NREL API)
 NREL_API_KEY=your_free_api_key_from_nrel_gov
+
+# System Financial Configuration
+SOLAR_SYSTEM_SIZE_KW=10.0
+SOLAR_SYSTEM_COST_PER_KW=2500
+SOLAR_SYSTEM_TOTAL_COST=25000
+SOLAR_FEDERAL_TAX_CREDIT_PERCENT=30
+SOLAR_STATE_REBATE=5000
+SOLAR_UTILITY_REBATE=2000
 ```
 
 **Usage in notebooks:**
-All financial analysis automatically uses location-specific rates - no hardcoded values!
+All financial analysis automatically uses location-specific rates and system costs - no hardcoded values!
+
+## System Cost & Financial Configuration
+⚙️ **Configurable system costs and rebates for accurate financial modeling:**
+
+**Features:**
+- 🏠 **System specifications** - Configure system size, cost per kW, or total cost
+- 💰 **Federal tax credit** - Automatic calculation based on configurable percentage (default 30%)
+- 🏛️ **State & utility rebates** - Add state, utility, and other rebate amounts
+- 📊 **Net cost calculation** - Automatic calculation of system cost after all rebates and tax credits
+- 📈 **ROI analysis** - Payback period and return on investment using actual system costs
+
+**Configuration options:**
+- `SOLAR_SYSTEM_SIZE_KW` - System size in kilowatts (default: 10.0)
+- `SOLAR_SYSTEM_COST_PER_KW` - Cost per kilowatt installed (default: $2,500)
+- `SOLAR_SYSTEM_TOTAL_COST` - Total system cost (overrides size × cost_per_kw if specified)
+- `SOLAR_FEDERAL_TAX_CREDIT_PERCENT` - Federal tax credit percentage (default: 30%)
+- `SOLAR_STATE_REBATE` - State rebate amount in dollars (default: $0)
+- `SOLAR_UTILITY_REBATE` - Utility rebate amount in dollars (default: $0)
+- `SOLAR_OTHER_REBATES` - Other rebates (manufacturer, installer, etc.) in dollars (default: $0)
+
+**Automatic calculations:**
+- Federal tax credit amount = Total cost × Tax credit percentage
+- Total rebates = Federal tax credit + State rebate + Utility rebate + Other rebates
+- Net system cost = Total cost - Total rebates
+- Payback period = Net system cost ÷ Annual electricity savings
 
 ## Development
 - Install with dev dependencies: `uv sync --extra dev`

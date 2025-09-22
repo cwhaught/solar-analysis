@@ -230,3 +230,75 @@ def create_notebook_location_with_rates() -> tuple[LocationManager, dict]:
     rates = get_location_electricity_rates(location, nrel_api_key)
 
     return location, rates
+
+
+def load_system_financial_config(env_path: Optional[str] = None) -> dict:
+    """
+    Load solar system financial configuration from environment variables
+
+    Args:
+        env_path: Path to .env file (optional, searches for .env if not provided)
+
+    Returns:
+        Dictionary with system financial configuration
+    """
+
+    # Load environment variables from .env file if it exists
+    if env_path is None:
+        env_path = Path(".env")
+    else:
+        env_path = Path(env_path)
+
+    if env_path.exists():
+        _load_env_file(env_path)
+
+    # Load system specifications with defaults
+    system_size_kw = float(os.environ.get('SOLAR_SYSTEM_SIZE_KW', '10.0'))
+    cost_per_kw = float(os.environ.get('SOLAR_SYSTEM_COST_PER_KW', '2500'))
+    total_cost = float(os.environ.get('SOLAR_SYSTEM_TOTAL_COST', str(system_size_kw * cost_per_kw)))
+
+    # Load rebates and incentives
+    federal_tax_credit_percent = float(os.environ.get('SOLAR_FEDERAL_TAX_CREDIT_PERCENT', '30'))
+    state_rebate = float(os.environ.get('SOLAR_STATE_REBATE', '0'))
+    utility_rebate = float(os.environ.get('SOLAR_UTILITY_REBATE', '0'))
+    other_rebates = float(os.environ.get('SOLAR_OTHER_REBATES', '0'))
+
+    # Calculate derived values
+    federal_tax_credit = total_cost * (federal_tax_credit_percent / 100)
+    total_rebates = federal_tax_credit + state_rebate + utility_rebate + other_rebates
+    net_system_cost = total_cost - total_rebates
+
+    return {
+        'system_size_kw': system_size_kw,
+        'cost_per_kw': cost_per_kw,
+        'total_cost': total_cost,
+        'federal_tax_credit_percent': federal_tax_credit_percent,
+        'federal_tax_credit': federal_tax_credit,
+        'state_rebate': state_rebate,
+        'utility_rebate': utility_rebate,
+        'other_rebates': other_rebates,
+        'total_rebates': total_rebates,
+        'net_system_cost': net_system_cost,
+        'source': 'environment' if env_path.exists() else 'defaults'
+    }
+
+
+def get_complete_financial_config(env_path: Optional[str] = None) -> tuple[LocationManager, dict, dict]:
+    """
+    Get complete financial configuration including location, rates, and system costs
+
+    Args:
+        env_path: Path to .env file (optional)
+
+    Returns:
+        Tuple of (LocationManager, electricity_rates_dict, system_financial_dict)
+    """
+    location = create_notebook_location() if env_path is None else create_location_with_fallback(env_path=env_path)
+
+    # Try to get NREL API key from environment
+    nrel_api_key = os.environ.get('NREL_API_KEY')
+    rates = get_location_electricity_rates(location, nrel_api_key)
+
+    system_config = load_system_financial_config(env_path)
+
+    return location, rates, system_config
