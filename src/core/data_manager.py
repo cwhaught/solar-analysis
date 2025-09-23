@@ -9,6 +9,7 @@ Manages solar production data from multiple sources:
 Provides unified interface for ML models and analysis.
 """
 
+import os
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -35,6 +36,20 @@ class SolarDataManager:
         """
         self.csv_path = Path(csv_path)
         self.client = enphase_client
+
+        # Always resolve cache_dir relative to project root, not current working directory
+        if not os.path.isabs(cache_dir):
+            # Find project root by looking for pyproject.toml
+            current_dir = Path(__file__).resolve().parent
+            while current_dir.parent != current_dir:
+                if (current_dir / "pyproject.toml").exists():
+                    cache_dir = current_dir / cache_dir
+                    break
+                current_dir = current_dir.parent
+            else:
+                # Fallback: use relative to this file's directory
+                cache_dir = Path(__file__).resolve().parent.parent.parent / cache_dir
+
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
 
