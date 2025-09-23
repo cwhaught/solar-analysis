@@ -148,7 +148,7 @@ class DataSourceDetector:
             - available_sources: List of all available sources
             - selected_source: Information about selected source
         """
-        print(f"📊 Determining Best Data Source...")
+        print("📊 Determining Best Data Source...")
 
         # Create client
         client, client_type = self.create_enphase_client()
@@ -166,8 +166,8 @@ class DataSourceDetector:
         if client_type == "REAL_API":
             data_type = "📈 REAL API DATA (with CSV fallback)"
             selected_description = "Real Enphase API data from your solar system"
-            print(f"   🎯 PRIORITY: Real Enphase API data from your solar system")
-            print(f"   📡 Will attempt live API data first")
+            print("   🎯 PRIORITY: Real Enphase API data from your solar system")
+            print("   📡 Will attempt live API data first")
             print(f"   📁 CSV fallback: {best_csv_source.path}")
         else:
             data_type = f"📈 {best_csv_source.source_type}"
@@ -176,7 +176,7 @@ class DataSourceDetector:
             print(f"   📁 Using: {best_csv_source.path}")
 
         # Show all available sources for transparency
-        print(f"\n📋 Available Data Sources (in priority order):")
+        print("\n📋 Available Data Sources (in priority order):")
         for i, source in enumerate(csv_sources):
             priority_label = "🎯 SELECTED" if i == 0 else "   Available"
             emoji_map = {
@@ -265,7 +265,7 @@ class DataSourceDetector:
             data_summary: Summary from SolarDataManager
             recency_info: Recency analysis from analyze_data_recency()
         """
-        print(f"\n📈 Solar Data Loaded Successfully:")
+        print("\n📈 Solar Data Loaded Successfully:")
         print(f"   🎯 DATA TYPE: {strategy['data_type']}")
 
         # Show what was actually used
@@ -280,7 +280,7 @@ class DataSourceDetector:
         elif data_summary['csv']['available']:
             records = data_summary['csv']['records']
             date_range = data_summary['csv']['date_range']
-            print(f"   📁 Source: CSV file (API failed, using fallback)")
+            print("   📁 Source: CSV file (API failed, using fallback)")
             print(f"   📊 CSV Records: {records:,}")
             print(f"   📅 CSV Date range: {date_range[0]} to {date_range[1]}")
 
@@ -296,21 +296,21 @@ class DataSourceDetector:
         """Print final authenticity and guidance notice"""
 
         if data_summary['api']['available'] and not data_summary['api']['is_mock']:
-            print(f"\n🎉 SUCCESS: Analyzing YOUR actual solar system performance!")
-            print(f"   📈 Live API data from your Enphase system")
+            print("\n🎉 SUCCESS: Analyzing YOUR actual solar system performance!")
+            print("   📈 Live API data from your Enphase system")
             print(f"   🔗 System ID: {os.environ.get('ENPHASE_SYSTEM_ID', 'Unknown')}")
 
         elif strategy['selected_source'].source_type == "REAL_CSV":
-            print(f"\n✅ SUCCESS: Using REAL solar production data!")
-            print(f"   📈 Authentic solar panel data (not synthetic)")
-            print(f"   📊 Contains data through 2025")
+            print("\n✅ SUCCESS: Using REAL solar production data!")
+            print("   📈 Authentic solar panel data (not synthetic)")
+            print("   📊 Contains data through 2025")
             if strategy['client_type'] == "REAL_API":
-                print(f"   ℹ️ Note: API returned 401 (expired token), but CSV data is recent")
+                print("   ℹ️ Note: API returned 401 (expired token), but CSV data is recent")
 
         elif 'mock' in strategy['selected_source'].source_type.lower() or 'synthetic' in strategy['selected_source'].source_type.lower():
-            print(f"\n💡 NOTE: Using synthetic data for demonstration.")
-            print(f"   📝 To use your real data:")
-            print(f"   • Set up .env with Enphase API credentials (tokens may be expired)")
-            print(f"   • Or add real CSV data to ../data/raw/")
+            print("\n💡 NOTE: Using synthetic data for demonstration.")
+            print("   📝 To use your real data:")
+            print("   • Set up .env with Enphase API credentials (tokens may be expired)")
+            print("   • Or add real CSV data to ../data/raw/")
             if recency_info['latest_date']:
                 print(f"   ⚠️ Current mock data ends {recency_info['latest_date'].strftime('%B %Y')}")
