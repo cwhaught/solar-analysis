@@ -546,7 +546,12 @@ class SolarVisualizationSuite:
 
         savings_values = [monthly_savings.get(month, 0) for month in months]
 
-        bars = ax.bar(months, savings_values, color=SOLAR_COLORS['export'], alpha=0.7)
+        # Use explicit categorical data to avoid matplotlib warnings
+        import numpy as np
+        month_positions = np.arange(len(months))
+        bars = ax.bar(month_positions, savings_values, color=SOLAR_COLORS['export'], alpha=0.7)
+        ax.set_xticks(month_positions)
+        ax.set_xticklabels(months)
 
         format_solar_axes(ax, 'Month', 'Monthly Savings ($)')
         ax.set_title('Monthly Financial Impact', fontweight='bold')
@@ -572,7 +577,12 @@ class SolarVisualizationSuite:
         values = [-effective_cost, 0, annual_savings * (25 - payback_years)]
         colors = [SOLAR_COLORS['import'], 'gray', SOLAR_COLORS['export']]
 
-        bars = ax.bar(years, values, color=colors, alpha=0.7)
+        # Use explicit categorical data to avoid matplotlib warnings
+        import numpy as np
+        year_positions = np.arange(len(years))
+        bars = ax.bar(year_positions, values, color=colors, alpha=0.7)
+        ax.set_xticks(year_positions)
+        ax.set_xticklabels(years)
 
         # Add zero line
         ax.axhline(y=0, color='black', linestyle='-', alpha=0.5)
