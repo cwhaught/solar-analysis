@@ -29,9 +29,8 @@ uv.lock
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Data files
-data/raw/*.csv
-data/processed/*.csv
+# Data files - ignore entire data directory to protect sensitive information
+data/
 
 # IDE
 .vscode/
@@ -48,5 +47,7 @@ models/*.joblib
 # Plots
 plots/
 *.png
-*.jpg# Weather cache files - regenerated automatically
-data/cache/weather/*.json
+*.jpg
+
+# Weather cache files - regenerated automatically (covered by data/ above)
+# data/cache/weather/*.json
