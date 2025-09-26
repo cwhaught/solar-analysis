@@ -10,24 +10,159 @@ import seaborn as sns
 import numpy as np
 from typing import Tuple, List, Optional, Dict, Any
 
+# Top-level color constants for easy import
+SOLAR_COLORS = {
+    'production': '#FFB000',      # Solar yellow/orange
+    'consumption': '#1f77b4',     # Blue
+    'export': '#2ca02c',          # Green
+    'import': '#d62728',          # Red
+    'weather': '#ff7f0e',         # Orange
+    'efficiency': '#9467bd',      # Purple
+    'financial': '#17becf',       # Cyan
+    'seasonal': '#8c564b',        # Brown
+    'anomaly': '#e377c2'          # Pink
+}
+
+# Color palette for easy access
+SOLAR_COLOR_PALETTE = list(SOLAR_COLORS.values())
+
+# Figure style configurations
+FIGURE_STYLES = {
+    'default': {
+        'figsize': (12, 8),
+        'dpi': 100,
+        'style': 'seaborn-v0_8' if 'seaborn-v0_8' in plt.style.available else 'default'
+    },
+    'presentation': {
+        'figsize': (14, 10),
+        'dpi': 150,
+        'style': 'seaborn-v0_8-talk' if 'seaborn-v0_8-talk' in plt.style.available else 'default'
+    },
+    'dashboard': {
+        'figsize': (16, 12),
+        'dpi': 100,
+        'style': 'seaborn-v0_8-darkgrid' if 'seaborn-v0_8-darkgrid' in plt.style.available else 'default'
+    }
+}
+
+
+def apply_solar_style(style: str = 'default') -> None:
+    """
+    Apply solar-themed matplotlib styling.
+
+    Args:
+        style: Style name from FIGURE_STYLES
+    """
+    style_config = FIGURE_STYLES.get(style, FIGURE_STYLES['default'])
+
+    # Apply matplotlib style
+    try:
+        plt.style.use(style_config['style'])
+    except OSError:
+        # Fallback to default if style not available
+        plt.style.use('default')
+
+    # Apply custom solar parameters
+    plt.rcParams.update({
+        'figure.figsize': style_config['figsize'],
+        'figure.dpi': style_config['dpi'],
+        'axes.grid': True,
+        'grid.alpha': 0.3,
+        'axes.axisbelow': True,
+        'font.size': 10,
+        'axes.titlesize': 12,
+        'axes.labelsize': 11,
+        'xtick.labelsize': 9,
+        'ytick.labelsize': 9,
+        'legend.fontsize': 10,
+        'lines.linewidth': 2,
+        'patch.linewidth': 0.5,
+        'axes.spines.top': False,
+        'axes.spines.right': False,
+        'axes.edgecolor': '#333333',
+        'axes.linewidth': 1.2,
+        'xtick.color': '#333333',
+        'ytick.color': '#333333',
+        'text.color': '#333333'
+    })
+
+
+def create_styled_figure(figsize: Optional[Tuple[float, float]] = None,
+                        dpi: Optional[int] = None,
+                        style: str = 'default') -> plt.Figure:
+    """
+    Create a styled figure with solar theme.
+
+    Args:
+        figsize: Figure size tuple (width, height)
+        dpi: Figure DPI
+        style: Style name from FIGURE_STYLES
+
+    Returns:
+        Configured matplotlib figure
+    """
+    apply_solar_style(style)
+
+    style_config = FIGURE_STYLES.get(style, FIGURE_STYLES['default'])
+
+    # Use provided parameters or fall back to style defaults
+    fig_size = figsize or style_config['figsize']
+    fig_dpi = dpi or style_config['dpi']
+
+    fig = plt.figure(figsize=fig_size, dpi=fig_dpi)
+    return fig
+
+
+def format_solar_axes(ax: plt.Axes,
+                     xlabel: str,
+                     ylabel: str,
+                     title: Optional[str] = None,
+                     show_legend: bool = True,
+                     grid_alpha: float = 0.3,
+                     grid_style: str = '-',
+                     optimize_layout: bool = False) -> None:
+    """
+    Apply consistent formatting to axes.
+
+    Args:
+        ax: Matplotlib axes to format
+        xlabel: X-axis label
+        ylabel: Y-axis label
+        title: Optional axes title
+        show_legend: Whether to show legend if present
+        grid_alpha: Grid transparency
+        grid_style: Grid line style
+        optimize_layout: Whether to optimize layout
+    """
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if title:
+        ax.set_title(title, fontweight='bold', pad=15)
+
+    # Configure grid
+    ax.grid(True, alpha=grid_alpha, linestyle=grid_style)
+
+    # Handle legend
+    if show_legend and ax.get_legend_handles_labels()[0]:
+        ax.legend(frameon=True, fancybox=True, shadow=True)
+    elif not show_legend:
+        legend = ax.get_legend()
+        if legend:
+            legend.remove()
+
+    # Optimize layout if requested
+    if optimize_layout:
+        plt.tight_layout()
+
 
 class SolarPlotConfig:
     """
     Centralized plotting configuration for solar energy visualizations
     """
 
-    # Standard color schemes for different data types
-    SOLAR_COLORS = {
-        'production': '#FFB000',      # Solar yellow/orange
-        'consumption': '#1f77b4',     # Blue
-        'export': '#2ca02c',          # Green
-        'import': '#d62728',          # Red
-        'weather': '#ff7f0e',         # Orange
-        'efficiency': '#9467bd',      # Purple
-        'financial': '#17becf',       # Cyan
-        'seasonal': '#8c564b',        # Brown
-        'anomaly': '#e377c2'          # Pink
-    }
+    # Use the top-level constants
+    SOLAR_COLORS = SOLAR_COLORS
 
     # Seasonal color palette
     SEASONAL_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']  # Winter, Spring, Summer, Fall
