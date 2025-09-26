@@ -48,4 +48,5 @@ models/*.joblib
 # Plots
 plots/
 *.png
-*.jpg
+*.jpg# Weather cache files - regenerated automatically
+data/cache/weather/*.json
