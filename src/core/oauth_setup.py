@@ -56,7 +56,7 @@ class EnphaseOAuthSetup:
 
     def save_credentials(self, credentials: Dict[str, str]) -> bool:
         """
-        Save credentials securely to .env file
+        Save credentials securely to .env file, preserving existing content
 
         Args:
             credentials: Dictionary of credential key-value pairs
@@ -65,16 +65,42 @@ class EnphaseOAuthSetup:
             True if saved successfully
         """
         try:
-            # Build .env content
-            env_content = "# Enphase API Credentials - DO NOT COMMIT TO GIT\n"
+            # Read existing .env content
+            existing_lines = []
+            if self.env_file.exists():
+                with open(self.env_file, "r") as f:
+                    existing_lines = f.readlines()
 
+            # Process existing lines and update Enphase credentials
+            new_lines = []
+            enphase_keys = set(credentials.keys())
+            updated_keys = set()
+
+            for line in existing_lines:
+                stripped = line.strip()
+                if "=" in stripped and not stripped.startswith("#"):
+                    key, _ = stripped.split("=", 1)
+                    if key in enphase_keys:
+                        # Update this Enphase credential
+                        if credentials[key]:  # Only save non-empty values
+                            new_lines.append(f"{key}={credentials[key]}\n")
+                            updated_keys.add(key)
+                        # Skip empty values (don't add the line)
+                    else:
+                        # Keep non-Enphase lines as-is
+                        new_lines.append(line)
+                else:
+                    # Keep comments and empty lines as-is
+                    new_lines.append(line)
+
+            # Add any new Enphase credentials that weren't in the file
             for key, value in credentials.items():
-                if value:  # Only save non-empty values
-                    env_content += f"{key}={value}\n"
+                if key not in updated_keys and value:
+                    new_lines.append(f"{key}={value}\n")
 
-            # Write to file
+            # Write updated content
             with open(self.env_file, "w") as f:
-                f.write(env_content)
+                f.writelines(new_lines)
 
             # Set secure permissions (Unix/Mac only)
             try:

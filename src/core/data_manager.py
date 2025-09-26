@@ -51,7 +51,7 @@ class SolarDataManager:
                 cache_dir = Path(__file__).resolve().parent.parent.parent / cache_dir
 
         self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(exist_ok=True)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Cache files
         self.daily_cache_file = self.cache_dir / "daily_production_combined.csv"
