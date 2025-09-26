@@ -4,6 +4,7 @@ Pytest configuration and shared fixtures
 
 import pytest
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 import tempfile
 import os
@@ -118,3 +119,76 @@ def temp_cache_dir():
     import shutil
 
     shutil.rmtree(temp_dir)
+
+
+@pytest.fixture
+def sample_daily_data():
+    """Generate extended sample daily solar data for feature engineering tests"""
+    dates = pd.date_range("2023-01-01", periods=90, freq="D")  # 3 months for rolling features
+
+    # Generate realistic production pattern
+    day_of_year = dates.dayofyear
+    seasonal_factor = 1 + 0.3 * np.cos(2 * np.pi * (day_of_year - 172) / 365)  # Peak in summer
+    base_production = 30 * seasonal_factor + np.random.normal(0, 5, len(dates))
+    base_production = np.maximum(base_production, 0)  # No negative production
+
+    consumption = 35 + np.random.normal(0, 8, len(dates))
+    consumption = np.maximum(consumption, 5)  # Minimum consumption
+
+    export = np.maximum(base_production - consumption, 0)
+    import_energy = np.maximum(consumption - base_production, 0)
+
+    df = pd.DataFrame({
+        'Production (kWh)': base_production,
+        'Consumption (kWh)': consumption,
+        'Export (kWh)': export,
+        'Import (kWh)': import_energy
+    }, index=dates)
+
+    return df
+
+
+@pytest.fixture
+def sample_weather_data():
+    """Generate sample weather data for feature engineering tests"""
+    dates = pd.date_range("2023-01-01", periods=90, freq="D")
+
+    # Import numpy for fixtures
+    import numpy as np
+
+    df = pd.DataFrame({
+        'sunshine_hours': np.random.uniform(4, 12, len(dates)),
+        'cloudcover_mean_pct': np.random.uniform(10, 90, len(dates)),
+        'temp_mean_c': np.random.uniform(15, 30, len(dates)),
+        'temp_max_c': np.random.uniform(20, 35, len(dates)),
+        'temp_min_c': np.random.uniform(10, 25, len(dates)),
+        'precipitation_mm': np.random.exponential(2, len(dates)),
+        'solar_radiation_mj': np.random.uniform(10, 30, len(dates))
+    }, index=dates)
+
+    return df
+
+
+@pytest.fixture
+def mock_location_manager():
+    """Mock location manager for feature engineering tests"""
+    from unittest.mock import Mock
+
+    mock = Mock()
+    mock.latitude = 35.663
+    mock.longitude = -78.844
+    mock.location_name = "Holly Springs, NC"
+    mock.timezone_str = "America/New_York"
+
+    # Mock methods with realistic returns
+    mock.get_sunrise_sunset.return_value = (6.0, 18.0)  # 12 hours daylight
+    mock.get_solar_elevation.return_value = 45.0
+    mock.get_theoretical_solar_irradiance.return_value = 1000.0
+    mock.get_location_summary.return_value = {
+        'climate_type': 'Temperate',
+        'seasonal_variation': 0.5,
+        'winter_daylight_hours': 9.6,
+        'summer_daylight_hours': 14.4
+    }
+
+    return mock

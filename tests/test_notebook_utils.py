@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 sys.path.append('src')
 
-from core.notebook_utils import NotebookEnvironment, quick_setup, load_with_analysis, print_notebook_header
+from core.notebook_utils import NotebookEnvironment, quick_setup, load_with_analysis, load_with_features, print_notebook_header
 
 
 class TestNotebookEnvironment:
@@ -213,3 +213,114 @@ class TestConvenienceFunctions:
         captured = capsys.readouterr()
         assert "📊 Test Title" in captured.out
         assert "=" in captured.out
+
+
+class TestLoadWithFeatures:
+    """Test the new load_with_features function"""
+
+    @patch('core.notebook_utils.load_with_analysis')
+    @patch('features.feature_pipeline.FeaturePipeline')
+    def test_load_with_features_basic(self, mock_pipeline_class, mock_load_analysis):
+        """Test basic load_with_features functionality"""
+        # Mock base data
+        mock_base_data = {
+            'location': Mock(),
+            'daily_data': pd.DataFrame({
+                'Production (kWh)': [30, 35, 25, 40],
+                'Consumption (kWh)': [35, 30, 40, 28]
+            }, index=pd.date_range('2023-01-01', periods=4)),
+            'data_summary': {}
+        }
+        mock_load_analysis.return_value = mock_base_data
+
+        # Mock feature pipeline
+        mock_pipeline = Mock()
+        mock_pipeline.validate_data_for_features.return_value = {'valid': True, 'errors': [], 'warnings': []}
+        mock_pipeline.create_ml_dataset.return_value = mock_base_data['daily_data'].copy()
+        mock_pipeline.get_feature_summary.return_value = {'total_features': 25, 'feature_counts': {}}
+        mock_pipeline_class.return_value = mock_pipeline
+
+        # Test function
+        result = load_with_features(feature_sets=['temporal', 'financial'])
+
+        # Verify pipeline initialization
+        mock_pipeline_class.assert_called_once_with(location_manager=mock_base_data['location'])
+
+        # Verify pipeline calls
+        mock_pipeline.validate_data_for_features.assert_called_once()
+        mock_pipeline.create_ml_dataset.assert_called_once()
+        mock_pipeline.get_feature_summary.assert_called_once()
+
+        # Verify result structure
+        assert 'ml_features' in result
+        assert 'feature_pipeline' in result
+        assert 'feature_summary' in result
+
+    @patch('core.notebook_utils.load_with_analysis')
+    @patch('features.feature_pipeline.FeaturePipeline')
+    def test_load_with_features_validation_failure(self, mock_pipeline_class, mock_load_analysis):
+        """Test load_with_features with validation failure"""
+        # Mock base data
+        mock_base_data = {
+            'location': Mock(),
+            'daily_data': pd.DataFrame({'invalid': [1, 2, 3]}),  # Missing required columns
+            'data_summary': {}
+        }
+        mock_load_analysis.return_value = mock_base_data
+
+        # Mock pipeline with validation failure
+        mock_pipeline = Mock()
+        mock_pipeline.validate_data_for_features.return_value = {
+            'valid': False,
+            'errors': ['Missing required columns'],
+            'warnings': []
+        }
+        mock_pipeline_class.return_value = mock_pipeline
+
+        # Test function
+        result = load_with_features()
+
+        # Should still return data with fallback
+        assert 'ml_features' in result
+        assert 'feature_pipeline' in result
+
+    @patch('core.notebook_utils.load_with_analysis')
+    @patch('features.feature_pipeline.FeaturePipeline')
+    def test_load_with_features_error_handling(self, mock_pipeline_class, mock_load_analysis):
+        """Test load_with_features error handling"""
+        # Mock base data
+        mock_base_data = {
+            'location': Mock(),
+            'daily_data': pd.DataFrame({
+                'Production (kWh)': [30, 35, 25, 40]
+            }, index=pd.date_range('2023-01-01', periods=4)),
+        }
+        mock_load_analysis.return_value = mock_base_data
+
+        # Mock pipeline that raises exception
+        mock_pipeline_class.side_effect = Exception("Pipeline error")
+
+        # Test function - should not raise exception
+        result = load_with_features()
+
+        # Should gracefully fall back to base data
+        assert 'ml_features' in result
+        assert len(result['ml_features']) == len(mock_base_data['daily_data'])
+
+    def test_load_with_features_default_parameters(self):
+        """Test load_with_features with default parameters"""
+        # This test will use real components but with mocked data
+        with patch('core.notebook_utils.load_with_analysis') as mock_load_analysis:
+            mock_base_data = {
+                'location': None,  # No location
+                'daily_data': pd.DataFrame({
+                    'Production (kWh)': [30, 35, 25, 40]
+                }, index=pd.date_range('2023-01-01', periods=4)),
+                'data_summary': {}
+            }
+            mock_load_analysis.return_value = mock_base_data
+
+            # Should not raise exception even with minimal data
+            result = load_with_features()
+
+            assert 'ml_features' in result

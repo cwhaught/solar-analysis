@@ -7,7 +7,7 @@ other common notebook initialization tasks to eliminate code duplication.
 
 import sys
 from pathlib import Path
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, List
 
 # Add src to path for imports
 if '../src' not in sys.path:
@@ -151,6 +151,86 @@ def load_with_analysis() -> Dict[str, Any]:
         **data_results,
         'location_context': location_context
     }
+
+
+def load_with_features(
+    feature_sets: Optional[List[str]] = None,
+    weather_data: Optional[Any] = None,
+    target_col: str = 'Production (kWh)',
+    feature_config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Complete setup with data loading, analysis, and feature engineering.
+
+    Extends existing load_with_analysis to include comprehensive feature engineering
+    using the new FeaturePipeline infrastructure.
+
+    Args:
+        feature_sets: List of feature sets to include ['temporal', 'weather', 'financial', 'location']
+        weather_data: Optional weather data (auto-fetched if None and weather in feature_sets)
+        target_col: Target column for rolling/lag features
+        feature_config: Optional configuration for feature engineering
+
+    Returns:
+        Dictionary containing all components, loaded data, and engineered features
+    """
+    try:
+        # Start with existing infrastructure
+        base_data = load_with_analysis()
+
+        # Import feature engineering (avoid circular imports)
+        from features.feature_pipeline import FeaturePipeline
+
+        # Initialize feature pipeline with existing location and config
+        feature_pipeline = FeaturePipeline(location_manager=base_data['location'])
+
+        # Default feature sets
+        if feature_sets is None:
+            feature_sets = ['temporal', 'financial', 'location']
+            # Only add weather if data is provided or can be fetched
+            if weather_data is not None:
+                feature_sets.append('weather')
+
+        # Validate data for feature engineering
+        validation = feature_pipeline.validate_data_for_features(base_data['daily_data'])
+        if not validation['valid']:
+            print(f"⚠️ Data validation errors: {validation['errors']}")
+            # Fall back to base data
+            base_data['ml_features'] = base_data['daily_data'].copy()
+            base_data['feature_pipeline'] = feature_pipeline
+            return base_data
+
+        # Create ML dataset with features
+        print(f"🔧 Creating ML features: {feature_sets}")
+        ml_features = feature_pipeline.create_ml_dataset(
+            daily_data=base_data['daily_data'],
+            feature_sets=feature_sets,
+            weather_data=weather_data,
+            target_col=target_col
+        )
+
+        # Get feature summary
+        feature_summary = feature_pipeline.get_feature_summary()
+
+        print(f"✅ Created {feature_summary['total_features']} features across {len(feature_sets)} categories")
+        print(f"📊 Final ML dataset shape: {ml_features.shape}")
+
+        # Add to base data
+        base_data['ml_features'] = ml_features
+        base_data['feature_pipeline'] = feature_pipeline
+        base_data['feature_summary'] = feature_summary
+        base_data['feature_validation'] = validation
+
+        return base_data
+
+    except Exception as e:
+        print(f"❌ Error in feature engineering: {e}")
+        print("📋 Falling back to base data without features")
+
+        # Graceful fallback - return base data
+        base_data = load_with_analysis()
+        base_data['ml_features'] = base_data['daily_data'].copy()
+        return base_data
 
 
 def print_notebook_header(title: str, description: str = "") -> None:
