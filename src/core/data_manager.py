@@ -14,8 +14,22 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Union, Dict, Tuple
+from typing import Optional, Union, Dict, Tuple, Any
 import logging
+
+# Import new data utilities
+try:
+    from ..data.loaders import StandardizedCSVLoader
+    from ..data.processors import SolarDataProcessor
+    from ..data.quality import DataQualityChecker
+except ImportError:
+    # For test environment
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from data.loaders import StandardizedCSVLoader
+    from data.processors import SolarDataProcessor
+    from data.quality import DataQualityChecker
 
 
 class SolarDataManager:
@@ -72,12 +86,21 @@ class SolarDataManager:
             and "Mock" in enphase_client.__class__.__name__
         )
 
-    def load_csv_data(self, force_reload: bool = False) -> pd.DataFrame:
+        # Initialize new utility components
+        self._csv_loader = StandardizedCSVLoader(default_csv_path=str(self.csv_path))
+        self._processor = SolarDataProcessor()
+        self._quality_checker = DataQualityChecker()
+
+    def load_csv_data(self, force_reload: bool = False, validate_quality: bool = True) -> pd.DataFrame:
         """
-        Load and process historical CSV data
+        Load and process historical CSV data using enhanced utilities.
+
+        Enhanced with StandardizedCSVLoader for consistent processing
+        and optional data quality validation.
 
         Args:
             force_reload: Force reload even if already cached
+            validate_quality: Perform data quality validation
 
         Returns:
             DataFrame with processed CSV data
@@ -85,12 +108,41 @@ class SolarDataManager:
         if self._csv_data is not None and not force_reload:
             return self._csv_data
 
+        try:
+            # Use StandardizedCSVLoader for consistent processing
+            self._csv_data = self._csv_loader.load_solar_csv(
+                file_path=str(self.csv_path),
+                validate_data=validate_quality
+            )
+
+            # Maintain compatibility with existing attrs
+            self._csv_data.attrs["source"] = "csv"
+            self._csv_data.attrs["granularity"] = "15min"
+            if "loaded_at" not in self._csv_data.attrs:
+                self._csv_data.attrs["loaded_at"] = datetime.now()
+
+            self.logger.info(
+                f"Loaded {len(self._csv_data)} CSV records from {self._csv_data.index.min()} to {self._csv_data.index.max()}"
+            )
+
+            return self._csv_data
+
+        except Exception as e:
+            # Fallback to legacy loading for backward compatibility
+            self.logger.warning(f"Enhanced loading failed, using legacy method: {e}")
+            return self._load_csv_legacy(force_reload)
+
+    def _load_csv_legacy(self, force_reload: bool = False) -> pd.DataFrame:
+        """Legacy CSV loading method for backward compatibility."""
+        if self._csv_data is not None and not force_reload:
+            return self._csv_data
+
         if not self.csv_path.exists():
             raise FileNotFoundError(f"CSV file not found: {self.csv_path}")
 
-        self.logger.info(f"Loading CSV data from {self.csv_path}")
+        self.logger.info(f"Loading CSV data from {self.csv_path} (legacy method)")
 
-        # Load CSV data
+        # Original loading logic
         df = pd.read_csv(self.csv_path)
         df["Date/Time"] = pd.to_datetime(df["Date/Time"])
         df.set_index("Date/Time", inplace=True)
@@ -110,10 +162,6 @@ class SolarDataManager:
         df_kwh.attrs["loaded_at"] = datetime.now()
 
         self._csv_data = df_kwh
-        self.logger.info(
-            f"Loaded {len(df_kwh)} CSV records from {df_kwh.index.min()} to {df_kwh.index.max()}"
-        )
-
         return self._csv_data
 
     def load_api_data(
@@ -428,3 +476,148 @@ class SolarDataManager:
         except Exception as e:
             self.logger.error(f"Export failed: {e}")
             return False
+
+    # Enhanced methods using new data utilities
+
+    def get_data_quality_report(self, data_source: str = 'csv') -> str:
+        """
+        Generate comprehensive data quality report using enhanced quality checker.
+
+        Args:
+            data_source: Data source to analyze ('csv', 'api', or 'daily')
+
+        Returns:
+            Formatted quality report string
+        """
+        if data_source == 'csv':
+            data = self.load_csv_data()
+        elif data_source == 'api':
+            data = self.load_api_data()
+        elif data_source == 'daily':
+            data = self.get_daily_production()
+        else:
+            raise ValueError(f"Unknown data source: {data_source}")
+
+        if data.empty:
+            return f"No data available for source: {data_source}"
+
+        return self._quality_checker.generate_quality_report(data)
+
+    def create_enhanced_daily_summary(
+        self,
+        method: str = 'sum',
+        include_metrics: bool = True
+    ) -> pd.DataFrame:
+        """
+        Create enhanced daily summary with additional metrics using SolarDataProcessor.
+
+        Args:
+            method: Aggregation method ('sum', 'mean', 'max', 'min')
+            include_metrics: Include additional energy metrics
+
+        Returns:
+            Enhanced daily DataFrame with comprehensive metrics
+        """
+        csv_data = self.load_csv_data()
+
+        # Create daily summary using enhanced processor
+        daily_data = self._processor.create_daily_summary(csv_data, method=method)
+
+        if include_metrics:
+            # Add comprehensive energy metrics
+            daily_data = self._processor.calculate_net_energy(daily_data)
+            daily_data = self._processor.calculate_self_consumption_metrics(daily_data)
+            daily_data = self._processor.add_time_features(daily_data)
+
+        return daily_data
+
+    def prepare_ml_dataset(
+        self,
+        target_column: str = 'Production (kWh)',
+        feature_sets: Optional[list] = None,
+        dropna: bool = True
+    ) -> pd.DataFrame:
+        """
+        Prepare comprehensive ML dataset using SolarDataProcessor.
+
+        Consolidates ML preparation patterns found across notebooks into
+        a single, standardized function.
+
+        Args:
+            target_column: Target variable for ML models
+            feature_sets: Feature categories to include (uses all if None)
+            dropna: Remove rows with NaN values
+
+        Returns:
+            ML-ready DataFrame with comprehensive features
+        """
+        daily_data = self.get_daily_production()
+
+        return self._processor.prepare_ml_dataset(
+            daily_data,
+            target_column=target_column,
+            dropna=dropna
+        )
+
+    def validate_data_integrity(self, data_source: str = 'csv') -> Dict[str, Any]:
+        """
+        Validate data integrity using enhanced quality checker.
+
+        Args:
+            data_source: Data source to validate ('csv', 'api', or 'daily')
+
+        Returns:
+            Dictionary with validation results
+        """
+        if data_source == 'csv':
+            data = self.load_csv_data()
+        elif data_source == 'api':
+            data = self.load_api_data()
+        elif data_source == 'daily':
+            data = self.get_daily_production()
+        else:
+            raise ValueError(f"Unknown data source: {data_source}")
+
+        if data.empty:
+            return {
+                'is_valid': False,
+                'error': f'No data available for source: {data_source}'
+            }
+
+        return self._quality_checker.check_data_integrity(data)
+
+    def get_enhanced_data_summary(self) -> Dict[str, Any]:
+        """
+        Get enhanced data summary including quality metrics.
+
+        Extends the existing get_data_summary() with quality information.
+
+        Returns:
+            Enhanced summary with quality metrics
+        """
+        # Start with existing summary
+        summary = self.get_data_summary()
+
+        # Add quality metrics for each data source
+        for source in ['csv', 'api']:
+            if summary[source]['available']:
+                try:
+                    if source == 'csv':
+                        data = self.load_csv_data()
+                    else:
+                        data = self.load_api_data()
+
+                    completeness = self._quality_checker.check_completeness(data)
+                    integrity = self._quality_checker.check_data_integrity(data)
+
+                    summary[source]['quality'] = {
+                        'completeness_pct': completeness.get('overall_metrics', {}).get('completeness_pct', 0),
+                        'data_quality_score': integrity.get('summary', {}).get('data_quality_score', 0),
+                        'issues_count': len(integrity.get('issues', [])),
+                        'warnings_count': len(integrity.get('warnings', []))
+                    }
+
+                except Exception as e:
+                    summary[source]['quality'] = {'error': str(e)}
+
+        return summary

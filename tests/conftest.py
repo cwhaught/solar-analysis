@@ -192,3 +192,101 @@ def mock_location_manager():
     }
 
     return mock
+
+
+@pytest.fixture
+def sample_csv_file():
+    """Create temporary CSV file for data loading tests"""
+    import tempfile
+    import os
+
+    temp_dir = tempfile.mkdtemp()
+    csv_path = os.path.join(temp_dir, "test_solar_data.csv")
+
+    # Create sample CSV data
+    sample_data = {
+        "Date/Time": [
+            "2023-01-01 00:00:00",
+            "2023-01-01 00:15:00",
+            "2023-01-01 00:30:00",
+            "2023-01-01 00:45:00"
+        ],
+        "Production (Wh)": [0, 0, 1000, 2000],
+        "Consumption (Wh)": [800, 900, 1200, 1100],
+        "Export (Wh)": [0, 0, 0, 900],
+        "Import (Wh)": [800, 900, 200, 0]
+    }
+    df = pd.DataFrame(sample_data)
+    df.to_csv(csv_path, index=False)
+
+    yield csv_path
+
+    # Cleanup
+    import shutil
+    shutil.rmtree(temp_dir)
+
+
+@pytest.fixture
+def realistic_solar_data():
+    """Generate realistic solar production data for testing"""
+    dates = pd.date_range("2023-01-01", periods=2880, freq="15min")  # 30 days
+
+    # Generate realistic production pattern
+    production = []
+    for date in dates:
+        hour = date.hour + date.minute / 60
+        if 6 <= hour <= 18:  # Daylight hours
+            peak_factor = 1 - abs(hour - 12) / 6
+            base_production = max(0, peak_factor * 5000)  # Max 5kW
+            # Add some randomness
+            production.append(base_production * (0.8 + 0.4 * np.random.random()))
+        else:
+            production.append(0)
+
+    consumption = np.random.uniform(800, 1200, len(dates))  # 0.8-1.2 kW
+
+    # Calculate export/import
+    export = [max(0, p - c) for p, c in zip(production, consumption)]
+    import_energy = [max(0, c - p) for p, c in zip(production, consumption)]
+
+    df = pd.DataFrame({
+        "Date/Time": dates,
+        "Production (Wh)": production,
+        "Consumption (Wh)": consumption,
+        "Export (Wh)": export,
+        "Import (Wh)": import_energy
+    })
+
+    return df
+
+
+@pytest.fixture
+def problematic_solar_data():
+    """Generate solar data with quality issues for testing"""
+    dates = pd.date_range("2023-01-01", periods=100, freq="15min")
+
+    # Base data
+    production = np.random.uniform(0, 2000, 100)
+    consumption = np.random.uniform(800, 1200, 100)
+    export = np.random.uniform(0, 500, 100)
+    import_energy = np.random.uniform(0, 400, 100)
+
+    df = pd.DataFrame({
+        "Production (Wh)": production,
+        "Consumption (Wh)": consumption,
+        "Export (Wh)": export,
+        "Import (Wh)": import_energy
+    }, index=dates)
+
+    # Add quality issues
+    # Missing values
+    df.loc[df.index[10:15], "Production (Wh)"] = np.nan
+
+    # Negative production
+    df.loc[df.index[20], "Production (Wh)"] = -100
+
+    # Export exceeding production
+    df.loc[df.index[30], "Export (Wh)"] = 3000
+    df.loc[df.index[30], "Production (Wh)"] = 1000
+
+    return df
