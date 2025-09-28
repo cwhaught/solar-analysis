@@ -12,6 +12,16 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
 import logging
 
+# Import ColumnMapper for robust column handling
+try:
+    from .column_mapper import ColumnMapper
+except ImportError:
+    # Fallback for development/testing
+    import sys
+    import os
+    sys.path.append(os.path.dirname(__file__))
+    from column_mapper import ColumnMapper
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,12 +36,38 @@ class SolarDataProcessor:
     - Time-based feature additions
     """
 
-    def __init__(self):
-        """Initialize processor with default settings."""
+    def __init__(self, use_column_mapper: bool = True):
+        """
+        Initialize processor with default settings.
+
+        Args:
+            use_column_mapper: Use intelligent column detection for robustness
+        """
         self.default_energy_columns = [
             'Production (kWh)', 'Consumption (kWh)',
             'Export (kWh)', 'Import (kWh)'
         ]
+        self.use_column_mapper = use_column_mapper
+        if use_column_mapper:
+            self.column_mapper = ColumnMapper(strict_mode=False, log_level='WARNING')
+
+    def _ensure_standard_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Ensure DataFrame has standardized column names.
+
+        Args:
+            df: DataFrame to standardize
+
+        Returns:
+            DataFrame with standard column names
+        """
+        if self.use_column_mapper:
+            try:
+                return self.column_mapper.standardize_columns(df)
+            except Exception as e:
+                logger.warning(f"Column standardization failed: {e}, continuing with original columns")
+                return df
+        return df
 
     def create_daily_summary(
         self,
@@ -56,6 +92,9 @@ class SolarDataProcessor:
             Daily aggregated DataFrame with metadata
         """
         logger.debug(f"Creating daily summary using {method} aggregation")
+
+        # Ensure standard column names for consistent processing
+        df = self._ensure_standard_columns(df)
 
         try:
             # Perform aggregation based on method

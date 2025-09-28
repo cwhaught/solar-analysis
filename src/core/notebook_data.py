@@ -16,6 +16,7 @@ try:
     from ..data.loaders import QuickDataLoader, StandardizedCSVLoader
     from ..data.processors import SolarDataProcessor
     from ..data.quality import DataQualityChecker
+    from ..data.column_mapper import ColumnMapper, detect_energy_columns, standardize_energy_columns
 except ImportError:
     # For notebook environment
     import sys
@@ -24,6 +25,7 @@ except ImportError:
     from data.loaders import QuickDataLoader, StandardizedCSVLoader
     from data.processors import SolarDataProcessor
     from data.quality import DataQualityChecker
+    from data.column_mapper import ColumnMapper, detect_energy_columns, standardize_energy_columns
 from .data_manager import SolarDataManager
 from .data_source_detector import DataSourceDetector
 from .location_loader import create_notebook_location
@@ -362,6 +364,119 @@ def print_data_overview(data: pd.DataFrame, title: str = "Dataset Overview") -> 
         print(summary.round(2))
     else:
         print("  • No numeric columns found")
+
+
+def quick_column_detection(df: pd.DataFrame, print_summary: bool = True) -> Dict[str, str]:
+    """
+    Quick column detection and validation for notebook use.
+
+    Eliminates the manual column detection pattern found in every notebook:
+    ```python
+    # OLD PATTERN (15+ lines per notebook)
+    production_col = None
+    consumption_col = None
+    for col in daily_data.columns:
+        if 'production' in col.lower() or 'produced' in col.lower():
+            production_col = col
+        elif 'consumption' in col.lower() or 'consumed' in col.lower():
+            consumption_col = col
+    ```
+
+    With simple:
+    ```python
+    # NEW PATTERN (1 line)
+    energy_cols = quick_column_detection(daily_data)
+    production_col = energy_cols.get('production')
+    ```
+
+    Args:
+        df: DataFrame to analyze
+        print_summary: Print detection summary for notebook output
+
+    Returns:
+        Dict mapping energy type to column name
+    """
+    # Use WARNING level to suppress INFO messages in notebooks
+    mapper = ColumnMapper(strict_mode=False, log_level='WARNING')
+
+    if print_summary:
+        mapper.print_detection_summary(df)
+
+    return mapper.detect_columns(df)
+
+
+def standardize_dataframe_columns(df: pd.DataFrame,
+                                print_changes: bool = True) -> pd.DataFrame:
+    """
+    Standardize DataFrame column names for consistent analysis.
+
+    Args:
+        df: DataFrame to standardize
+        print_changes: Print what changes were made
+
+    Returns:
+        DataFrame with standardized column names
+    """
+    if print_changes:
+        original_cols = set(df.columns)
+
+    # Use quiet mapper for standardization
+    quiet_mapper = ColumnMapper(strict_mode=False, log_level='WARNING')
+    result = quiet_mapper.standardize_columns(df)
+
+    if print_changes:
+        new_cols = set(result.columns)
+        if original_cols != new_cols:
+            print("✅ Column standardization applied:")
+            detected = quiet_mapper.detect_columns(df)
+            for energy_type, detected_col in detected.items():
+                if detected_col in original_cols:
+                    standard_name = quiet_mapper.config.standard_columns.get(energy_type)
+                    if standard_name and standard_name in result.columns:
+                        print(f"  '{detected_col}' → '{standard_name}'")
+        else:
+            print("✅ No column changes needed - already standardized")
+
+    return result
+
+
+def validate_energy_dataframe(df: pd.DataFrame,
+                            print_report: bool = True) -> Dict[str, Any]:
+    """
+    Validate that DataFrame has expected energy columns.
+
+    Args:
+        df: DataFrame to validate
+        print_report: Print validation report
+
+    Returns:
+        Validation results
+    """
+    validation = validate_solar_data_columns(df)
+
+    if print_report:
+        print(f"\n📊 Energy Data Validation")
+        print("=" * 30)
+        print(f"Status: {validation['status']}")
+        print(f"Energy columns detected: {validation['column_count']}")
+
+        if validation['detected_columns']:
+            print(f"\n✅ Detected columns:")
+            for energy_type, col_name in validation['detected_columns'].items():
+                print(f"  • {energy_type.title()}: '{col_name}'")
+
+        if validation['missing_critical'] or validation['missing_important']:
+            print(f"\n⚠️  Missing columns:")
+            if validation['missing_critical']:
+                print(f"  • Critical: {validation['missing_critical']}")
+            if validation['missing_important']:
+                print(f"  • Important: {validation['missing_important']}")
+
+        print(f"\n💡 Recommendations:")
+        for rec in validation['recommendations']:
+            print(f"  • {rec}")
+
+    return validation
 
 
 def deprecated_load_enphase_data(filename: str = "4136754_custom_report.csv") -> pd.DataFrame:

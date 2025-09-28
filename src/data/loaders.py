@@ -14,6 +14,16 @@ from typing import Dict, List, Optional, Any, Tuple, Union
 import logging
 import warnings
 
+# Import ColumnMapper for intelligent column detection
+try:
+    from .column_mapper import ColumnMapper
+except ImportError:
+    # Fallback for development/testing
+    import sys
+    import os
+    sys.path.append(os.path.dirname(__file__))
+    from column_mapper import ColumnMapper
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +53,8 @@ class StandardizedCSVLoader:
         datetime_col: str = 'Date/Time',
         auto_convert_units: bool = True,
         validate_data: bool = True,
-        add_metadata: bool = True
+        add_metadata: bool = True,
+        standardize_columns: bool = True
     ) -> pd.DataFrame:
         """
         Load solar CSV data with standardized preprocessing.
@@ -63,6 +74,7 @@ class StandardizedCSVLoader:
             auto_convert_units: Automatically convert Wh to kWh
             validate_data: Perform data validation
             add_metadata: Add metadata attributes to DataFrame
+            standardize_columns: Apply intelligent column name standardization
 
         Returns:
             Processed DataFrame with datetime index and standardized columns
@@ -102,6 +114,16 @@ class StandardizedCSVLoader:
                 validation_results = self.validate_solar_data(df)
                 if not validation_results['is_valid']:
                     warnings.warn(f"Data validation issues: {validation_results['warnings']}")
+
+            # Standardize column names if requested
+            if standardize_columns:
+                try:
+                    column_mapper = ColumnMapper(strict_mode=False, log_level='WARNING')
+                    df = column_mapper.standardize_columns(df)
+                    logger.info("Applied intelligent column standardization")
+                except Exception as e:
+                    logger.warning(f"Column standardization failed: {e}")
+                    # Continue without standardization
 
             # Add metadata
             if add_metadata:
